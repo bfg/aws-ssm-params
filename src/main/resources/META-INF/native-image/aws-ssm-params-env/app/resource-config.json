@@ -1,0 +1,8 @@
+{
+  "resources" : {
+    "includes" : [
+      { "pattern" : "logback*.xml" },
+      { "pattern": ".*logback.*-version.properties" }
+    ]
+  }
+}

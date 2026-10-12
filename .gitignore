@@ -1,0 +1,44 @@
+#
+# .gitignore
+#
+
+Thumbs.db
+.DS_Store
+.gradle
+build/
+target/
+out/
+.micronaut/
+.idea
+*.iml
+*.ipr
+*.iws
+.project
+.settings
+.classpath
+.factorypath
+
+build.env
+git.env
+
+# docker-compose .env
+.env
+
+qodana.yml
+qodana.yaml
+
+tmp/
+
+.kotlin/
+
+# docker env files
+.env.*
+
+# local application.conf
+**/application-local.conf
+
+# data stuff
+data/shared/
+
+# vim:shiftwidth=2 softtabstop=2 expandtab
+# EOF
