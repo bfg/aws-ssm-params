@@ -165,6 +165,7 @@ public final class Main implements Callable<Integer> {
             System.out.println(formatParams(ssmParams));
             return 0;
         } catch (Throwable t) {
+            log.debug("failed to read SSM parameters", t);
             return die("failed to read SSM parameters", t);
         }
     }
@@ -223,6 +224,6 @@ public final class Main implements Callable<Integer> {
             builder.endpointOverride(URI.create(awsEndpoint));
         }
 
-        return SsmClient.create();
+        return builder.build();
     }
 }

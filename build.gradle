@@ -20,6 +20,9 @@ plugins {
     id 'com.gorylenko.gradle-git-properties' version '4.0.1'
 }
 
+// import common utils
+apply from: "gradle/utils.gradle"
+
 repositories {
     mavenCentral()
 }
@@ -91,39 +94,38 @@ graalvmNative {
     binaries {
         main {
             fallback      = false
-            richOutput    = true
+            richOutput    = !envBool('CI')  // plain output on CI, rich on local dev
 
-            // optimize for faster build time by default
+            // optimize for faster build time for dev builds and smaller binary for prod builds
             if (envBool('PROD_BINARY')) {
                 buildArgs.add("-Os")
             } else {
                 buildArgs.add("-Ob")
             }
 
+            // NOTE: AWS EC2 instance metadata doesn't work without this due to usage of java urlconnection
+            buildArgs.add("--enable-url-protocols=http,https")
+
+            if (!envBool('CI')) {
+                buildArgs.addAll('--emit', 'build-report')
+            }
+
             // linux specifics/optimizations
             if (osdetector.os == 'linux') {
-                if (System.env.STATIC_BINARY == 'true') {
+                // static musl binaries are supported **only** on x86_64
+                // SEE: https://github.com/oracle/graal/issues/10018#issuecomment-2456872046
+                if (envBool('STATIC_BINARY') && osdetector.arch in ['x86_64']) {
                     buildArgs.add('--static')
                     buildArgs.add('--libc=musl')
                 }
 
-                // The G1 garbage collector ('--gc=G1') is currently only supported on AMD64 and AArch64.
-                if (osdetector.arch in ['x86_64', 'aarch64']) {
-                    buildArgs.add("--gc=G1")
-                }
+                // NOTE: the G1 garbage collector ('--gc=G1') is currently only supported on AMD64 and AArch64.
+                //if (osdetector.arch in ['x86_64', 'aarch64']) {
+                //    buildArgs.add("--gc=G1")
+                //}
             }
         }
     }
-}
-
-static boolean envBool(def envVarName, def defaultValue = false) {
-    def value = envStr(envVarName, 'false')
-    return (value in ['1', 't', 'true', 'y', 'yes', 'on'])
-}
-
-static boolean envStr(def envVarName, def defaultValue = '') {
-    def value = System.env[envVarName] ?: defaultValue
-    value.trim()
 }
 
 // vim:shiftwidth=2 softtabstop=2 expandtab

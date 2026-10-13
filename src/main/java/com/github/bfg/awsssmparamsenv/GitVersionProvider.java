@@ -36,5 +36,6 @@ public final class GitVersionProvider implements IVersionProvider {
                 .filter(it -> !props.get(it).toString().isBlank())
                 .map(it -> it + "=" + props.get(it).toString())
                 .collect(Collectors.joining(System.lineSeparator()));
+
     }
 }

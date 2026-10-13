@@ -1,0 +1,95 @@
+name: build-native-image
+
+on:
+  push:
+    # run when commit is pushed to main branch
+    branches: [ main ]
+
+    # run when a tag is created
+    tags:
+      - '**'
+
+  # run when commit is pushed as PR to main
+  pull_request:
+    branches: [ '**' ]
+
+permissions:
+  checks:         write   # used by: mikepenz/action-junit-report
+  pull-requests:  write   # used by: mikepenz/action-junit-report
+  contents:       write   # used by: softprops/action-gh-release
+  discussions:    write   # used by: softprops/action-gh-release
+
+env:
+  # print env vars?
+  DEBUG_ENV:                    ${{ vars.DEBUG_ENV || 'false' }}
+
+  # should we skip running tests as part of the build? (handled by build.gradle)
+  SKIP_TESTS:                   ${{ vars.SKIP_TESTS || 'false' }}
+
+  # build container image?
+  BUILD_CONTAINER_IMAGE:        ${{ vars.SKIP_TESTS || 'false' }}
+
+  # build production ready binary?
+  PROD_BINARY:                  ${{ vars.PROD_BINARY || 'true' }}
+
+  # build statically linked binary if supported and possible?
+  STATIC_BINARY:                ${{ vars.STATIC_BINARY || 'true' }}
+
+# Use concurrency to ensure that only a single job or workflow using the same concurrency group will
+# run at a time. A concurrency group can be any string or expression.
+#
+# SEE: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency
+concurrency:
+  group:              ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  linux-binary:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+        with:
+          # checkout PR head commit instead of merge commit for PR builds, otherwise checkout ordinary ref
+          # SEE: https://github.com/actions/checkout#checkout-pull-request-head-commit-instead-of-merge-commit
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers:    true
+          cache-read-only:      false
+          cache-cleanup:        on-success
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version:             25
+          distribution:             graalvm-community
+          check-for-updates:        false
+          native-image-musl:        true
+          native-image-job-reports: true
+          native-image-pr-reports:  false
+          cache:                    gradle
+          github-token:             ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set env variables
+        run: |
+          echo "OS="$(uname -s | tr '[:upper:]' '[:lower:]') >> "$GITHUB_ENV"
+          echo "ARCH="$(uname -m | tr '[:upper:]' '[:lower:]') >> "$GITHUB_ENV"
+
+      - name: Display environment variables
+        if:   env.DEBUG_ENV == 'true' || contains(github.event.pull_request.labels.*.name, 'debug-env')
+        run:  env | sort -k1
+
+      - name: Build application binary
+        run: ./gradlew nativeCompile
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name:               aws-ssm-params-env-${{ env.OS }}-${{ env.ARCH }}
+          path:               build/native/nativeCompile/aws-ssm-params-env
+          if-no-files-found:  error
+
+# vim:shiftwidth=2 softtabstop=2 expandtab
+# EOF
