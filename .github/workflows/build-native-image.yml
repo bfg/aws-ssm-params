@@ -19,6 +19,22 @@ permissions:
   contents:       write   # used by: softprops/action-gh-release
   discussions:    write   # used by: softprops/action-gh-release
 
+env:
+  # print env vars?
+  DEBUG_ENV:                    ${{ vars.DEBUG_ENV || 'false' }}
+
+  # should we skip running tests as part of the build? (handled by build.gradle)
+  SKIP_TESTS:                   ${{ vars.SKIP_TESTS || 'false' }}
+
+  # build container image?
+  BUILD_CONTAINER_IMAGE:        ${{ vars.SKIP_TESTS || 'false' }}
+
+  # build production ready binary?
+  PROD_BINARY:                  ${{ vars.PROD_BINARY || 'true' }}
+
+  # build statically linked binary if supported and possible?
+  STATIC_BINARY:                ${{ vars.STATIC_BINARY || 'true' }}
+
 # Use concurrency to ensure that only a single job or workflow using the same concurrency group will
 # run at a time. A concurrency group can be any string or expression.
 #
@@ -28,8 +44,8 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  linux-static:
-    runs-on: ubuntu-24.04
+  linux-binary:
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
@@ -53,20 +69,27 @@ jobs:
           check-for-updates:        false
           native-image-musl:        true
           native-image-job-reports: true
-          native-image-pr-reports:  true
+          native-image-pr-reports:  false
           cache:                    gradle
           github-token:             ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set env variables
+        run: |
+          echo "OS="$(uname -s | tr '[:upper:]' '[:lower:]') >> "$GITHUB_ENV"
+          echo "ARCH="$(uname -m | tr '[:upper:]' '[:lower:]') >> "$GITHUB_ENV"
+
+      - name: Display environment variables
+        if:   env.DEBUG_ENV == 'true' || contains(github.event.pull_request.labels.*.name, 'debug-env')
+        run:  env | sort -k1
+
       - name: Build application binary
         run: ./gradlew nativeCompile
-        env:
-          STATIC_BINARY: 'true'
 
       - uses: actions/upload-artifact@v7
         with:
-          name: aws-ssm-params-env-linux-amd64
-          path: build/native/nativeCompile/aws-ssm-params-env
-          if-no-files-found: error
+          name:               aws-ssm-params-env-${{ env.OS }}-${{ env.ARCH }}
+          path:               build/native/nativeCompile/aws-ssm-params-env
+          if-no-files-found:  error
 
 # vim:shiftwidth=2 softtabstop=2 expandtab
 # EOF

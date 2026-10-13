@@ -1,0 +1,43 @@
+//
+// gradle snippet
+//
+
+def projectVersion() {
+    def version = project?.version ?: "0.0.1-SNAPSHOT"
+    return version.toLowerCase().trim()
+}
+
+boolean isSnapshot() {
+    projectVersion().endsWith("-snapshot")
+}
+
+def isRelease() {
+    !isSnapshot()
+}
+
+def gitCommitId() {
+    project.ext.git['git.commit.id.abbrev'] ?: 'unknown-commit'
+}
+
+boolean envBool(String envVarName, boolean defaultValue = false) {
+    def value = envStr(envVarName, defaultValue.toString())
+    return (value in ['1', 't', 'true', 'y', 'yes', 'on'])
+}
+
+String envStr(String envVarName, String defaultValue = '') {
+    def value = System.env[envVarName] ?: defaultValue
+    value.trim()
+}
+
+//////////////////////////////////////////////////////////////////////
+//                         exported stuff                           //
+//////////////////////////////////////////////////////////////////////
+
+ext.envBool = { String name, boolean defValue = false -> envBool(name, defValue) }
+ext.envStr = { String name, String defValue = "" -> envStr(name, defValue) }
+ext.isSnapshot = { isSnapshot() }
+ext.isRelease = { isRelease() }
+
+
+// vim:syntax=gradle,shiftwidth=2 softtabstop=2 expandtab
+// EOF
