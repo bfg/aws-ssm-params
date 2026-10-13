@@ -1,0 +1,18 @@
+
+services:
+  localstack:
+    image:      localstack/localstack:4.14.0
+    environment:
+      SERVICES: ssm
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./src/test/localstack/init-ssm.sh:/etc/localstack/init/ready.d/init-ssm.sh:ro
+    healthcheck:
+      test:     ["CMD-SHELL", "awslocal ssm get-parameter --name /test/gamma/api_key >/dev/null 2>&1"]
+      interval: 30s
+      timeout:  5s
+      retries:  30
+
+# vim:shiftwidth=2 softtabstop=2 expandtab
+# EOF

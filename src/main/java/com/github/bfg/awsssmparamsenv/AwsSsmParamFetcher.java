@@ -82,6 +82,11 @@ public final class AwsSsmParamFetcher implements Closeable {
                 .replace("__", "_")
                 .trim();
 
+        if (result.matches("^[0-9]+.*")) {
+            log.warn("invalid parameter name at path: {} (starts with a number)", it.name());
+            return "";
+        }
+
         return (query.uppercase()) ? result.toUpperCase() : result;
     }
 

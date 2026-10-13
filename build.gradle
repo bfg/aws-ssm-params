@@ -14,10 +14,13 @@ buildscript {
 
 plugins {
     id 'application'
-    id 'org.graalvm.buildtools.native'      version '1.1.14'
-    id "com.gradleup.shadow"                version "9.6.1"
-    id "com.google.osdetector"              version "1.7.3"
-    id 'com.gorylenko.gradle-git-properties' version '4.0.1'
+    id 'groovy'
+    id 'jacoco'
+    id 'org.graalvm.buildtools.native'          version '1.1.14'
+    id "com.gradleup.shadow"                    version "9.6.1"
+    id "com.google.osdetector"                  version "1.7.3"
+    id 'com.gorylenko.gradle-git-properties'    version '4.0.1'
+    id 'com.adarshr.test-logger'                version '4.0.0'
 }
 
 // import common utils
@@ -38,11 +41,56 @@ dependencies {
     implementation          "ch.qos.logback:logback-classic:${logbackVer}"
 
     implementation          "software.amazon.awssdk:ssm:${aws2SdkVer}"
+
+    testImplementation      "org.spockframework:spock-core:2.5-groovy-6.0"
+    testImplementation      "com.google.code.gson:gson:2.14.0"
+    testRuntimeOnly         "org.junit.platform:junit-platform-launcher:1.14.4"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }
 
 application {
     mainClass = 'com.github.bfg.awsssmparamsenv.Main'
 }
+
+// BEGIN: testing
+test {
+    // tests require more memory
+    maxHeapSize = "2G"
+
+    jvmArgs += [
+            // Disable the following JVM warning while running tests
+            //
+            // WARNING: A restricted method in java.lang.System has been called
+            // WARNING: java.lang.System::loadLibrary has been called by io.netty.util.internal.NativeLibraryUtil
+            '--enable-native-access=ALL-UNNAMED'
+    ]
+
+    finalizedBy jacocoTestReport // report is always generated after tests run
+}
+
+// BEGIN: jacoco code coverage
+jacoco {
+    toolVersion = "0.8.14"
+}
+
+jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report
+    reports {
+        xml.required = true
+        csv.required = false
+        html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+    }
+}
+// END:   jacoco code coverage
+
+testlogger {
+    theme         = 'mocha'
+    slowThreshold = 2000
+}
+// END: testing
 
 gitProperties {
     dateFormat = "yyyy-MM-dd'T'HH:mm:SS'Z'"
