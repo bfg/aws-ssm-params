@@ -2,7 +2,8 @@
   "resources" : {
     "includes" : [
       { "pattern" : "logback*.xml" },
-      { "pattern": ".*logback.*-version.properties" }
+      { "pattern": ".*logback.*-version.properties" },
+      { "pattern": "git.properties" }
     ]
   }
 }
