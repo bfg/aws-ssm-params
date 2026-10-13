@@ -2,6 +2,9 @@
 // gradle snippet
 //
 
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
 def projectVersion() {
     def version = project?.version ?: "0.0.1-SNAPSHOT"
     return version.toLowerCase().trim()
@@ -19,15 +22,51 @@ def gitCommitId() {
     project.ext.git['git.commit.id.abbrev'] ?: 'unknown-commit'
 }
 
+boolean boolValue(String value) {
+    return (value in ['1', 't', 'true', 'y', 'yes', 'on'])
+}
+
 boolean envBool(String envVarName, boolean defaultValue = false) {
     def value = envStr(envVarName, defaultValue.toString())
-    return (value in ['1', 't', 'true', 'y', 'yes', 'on'])
+    boolValue(value)
 }
 
 String envStr(String envVarName, String defaultValue = '') {
     def value = System.env[envVarName] ?: defaultValue
     value.trim()
 }
+
+static def toSanitized(str) {
+    str
+            ?.replaceAll('[^\\w\\-\\.]+', '-')
+            ?.replaceAll('\\-{2,}', '-')
+            ?.trim()
+            ?.toLowerCase()
+}
+
+
+def dockerImgVersion() {
+    if (isRelease()) {
+        return "v${projectVersion()}"
+    }
+
+    def git = project.ext.git
+    def zdt = ZonedDateTime.parse(git['git.commit.time'])
+    def branch = git['git.branch'] ?: 'main'
+
+    def imgVersion = "${branch}-${zdt.format(DateTimeFormatter.ofPattern('yyyyMMdd-HHmm'))}-${gitCommitId()}"
+    return toSanitized(imgVersion) ?: "latest"
+}
+
+def dockerAdditionalTags() {
+    if (isRelease()) {
+        return []
+    }
+
+    def commitId = gitCommitId()
+    [ "${projectVersion()}-${commitId}" ]
+}
+
 
 //////////////////////////////////////////////////////////////////////
 //                         exported stuff                           //
@@ -38,6 +77,29 @@ ext.envStr = { String name, String defValue = "" -> envStr(name, defValue) }
 ext.isSnapshot = { isSnapshot() }
 ext.isRelease = { isRelease() }
 
+tasks.register('dockerImgVersion') {
+    dependsOn generateGitProperties
+    group       = "docker"
+    description = "Displays container image version"
+    doLast {
+        println(dockerImgVersion())
+    }
+}
+tasks.register('dockerImgTag') {
+    dependsOn generateGitProperties
+    group       = "docker"
+    description = "Displays main docker image tag"
+    doLast {
+        def registry = envStr('CONTAINER_REGISTRY')
+        def repository = envStr('CONTAINER_REPOSITORY')
+        def version = dockerImgVersion()
+        if (repository.isBlank()) throw new BuildCancelledException("CONTAINER_REPOSITORY env variable is not set.")
+        def res = "${repository}:${version}"
+        if (!registry.isEmpty()) res = "${registry}:${res}"
+
+        println(res)
+    }
+}
 
 // vim:syntax=gradle,shiftwidth=2 softtabstop=2 expandtab
 // EOF

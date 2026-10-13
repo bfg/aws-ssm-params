@@ -27,7 +27,9 @@ env:
   SKIP_TESTS:                   ${{ vars.SKIP_TESTS || 'false' }}
 
   # build container image?
-  BUILD_CONTAINER_IMAGE:        ${{ vars.SKIP_TESTS || 'false' }}
+  BUILD_CONTAINER_IMAGE:        ${{ vars.BUILD_CONTAINER_IMAGE || 'true' }}
+  CONTAINER_REGISTRY:           ${{ vars.CONTAINER_REGISTRY || '' }}
+  CONTAINER_REPOSITORY:         ${{ vars.CONTAINER_REPOSITORY || '' }}
 
   # build production ready binary?
   PROD_BINARY:                  ${{ vars.PROD_BINARY || 'true' }}
@@ -46,6 +48,9 @@ concurrency:
 jobs:
   linux-binary:
     runs-on: ubuntu-26.04
+    outputs:
+      CONTAINER_IMG_VERSION:  ${{ steps.define_outputs.outputs.CONTAINER_IMG_VERSION }}
+      CONTAINER_IMG_TAG:      ${{ steps.define_outputs.outputs.CONTAINER_IMG_TAG }}
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
@@ -78,18 +83,62 @@ jobs:
           echo "OS="$(uname -s | tr '[:upper:]' '[:lower:]') >> "$GITHUB_ENV"
           echo "ARCH="$(uname -m | tr '[:upper:]' '[:lower:]') >> "$GITHUB_ENV"
 
+      - name: Set job output variables
+        id:   define_outputs
+        run: |
+          echo "CONTAINER_IMG_VERSION="$(./gradlew -q dockerImgVersion) >> "$GITHUB_OUTPUT"
+          echo "CONTAINER_IMG_TAG="$(./gradlew -q dockerImgTag) >> "$GITHUB_OUTPUT"
+
       - name: Display environment variables
         if:   env.DEBUG_ENV == 'true' || contains(github.event.pull_request.labels.*.name, 'debug-env')
         run:  env | sort -k1
 
       - name: Build application binary
-        run: ./gradlew nativeCompile
+        run: ./gradlew --configuration-cache nativeCompile
 
       - uses: actions/upload-artifact@v7
         with:
           name:               aws-ssm-params-env-${{ env.OS }}-${{ env.ARCH }}
           path:               build/native/nativeCompile/aws-ssm-params-env
           if-no-files-found:  error
+
+  container-image:
+    needs:  linux-binary
+    #if:     ${{ vars.BUILD_CONTAINER_IMAGE == 'true' && vars.CONTAINER_REPOSITORY != '' }}
+    runs-on: ubuntu-26.04
+
+    env:
+      CONTAINER_IMG_VERSION:  ${{ needs.linux-binary.outputs.CONTAINER_IMG_VERSION }}
+      CONTAINER_IMG_TAG:      ${{ needs.linux-binary.outputs.CONTAINER_IMG_TAG }}
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Download binary from artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: aws-ssm-params-env-linux-x86_64
+          path: docker
+
+      - name: Display environment variables
+        if:   env.DEBUG_ENV == 'true' || contains(github.event.pull_request.labels.*.name, 'debug-env')
+        run:  env | sort -k1
+
+      - name: Login to container registry
+        run:  |
+          docker login --password-stdin \
+            -u "${{ secrets.CONTAINER_REGISTRY_USER }}" \
+            "${{ env.CONTAINER_REGISTRY}}" <<< "${{ secrets.CONTAINER_REGISTRY_PASS }}"
+
+      - name: Build container image
+        run:  docker build -t "${{ env.CONTAINER_IMG_TAG }}" docker
+
+      - name: Run built container image
+        run:  docker run --rm "${{ env.CONTAINER_IMG_TAG }}" --version
+
+      - name: Push built container image
+        run:  docker push "${{ env.CONTAINER_IMG_TAG }}"
 
 # vim:shiftwidth=2 softtabstop=2 expandtab
 # EOF
