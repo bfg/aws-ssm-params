@@ -44,8 +44,16 @@ static def toSanitized(str) {
             ?.toLowerCase()
 }
 
+def dockerImgVersion(boolean mutable = true) {
+    mutable ? dockerImgVersionMutable() : dockerImgVersionImmutable()
+}
 
-def dockerImgVersion() {
+def dockerImgVersionMutable() {
+    def version = projectVersion()
+    isRelease() ? "v${version}" : version
+}
+
+def dockerImgVersionImmutable() {
     if (isRelease()) {
         return "v${projectVersion()}"
     }

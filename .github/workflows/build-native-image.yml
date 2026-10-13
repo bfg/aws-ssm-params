@@ -90,7 +90,7 @@ jobs:
           echo "CONTAINER_IMG_TAG="$(./gradlew -q dockerImgTag) >> "$GITHUB_OUTPUT"
 
       - name: Start compose services
-        run: docker compose up -d --wait
+        run: docker compose up -d --quiet-pull --wait
 
       - name: Display environment variables
         if:   env.DEBUG_ENV == 'true' || contains(github.event.pull_request.labels.*.name, 'debug-env')
