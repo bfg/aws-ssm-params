@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 @Command(name = "aws-ssm-params-env",
         description = "Fetches AWS SSM parameter store parameters and formats the output",
         mixinStandardHelpOptions = true,
+        versionProvider = GitVersionProvider.class,
         showDefaultValues = true,
         sortOptions = false,
         footerHeading = "%n%n",
@@ -89,6 +90,9 @@ public final class Main implements Callable<Integer> {
     @Option(names = {"-L", "--log-level"}, description = "logger level (off/warn/info/debug/trace)")
     String logLevel = "";
 
+    @Option(names = {"--full-version"}, description = "display detailed application version")
+    boolean fullVersion = false;
+
     @Parameters(paramLabel = "PATH", description = "one or more SSM parameter store path(s) to fetch parameters from  (default: ${DEFAULT-VALUE})")
     List<String> paths = envStrList("SSM_PATHS", "AWS_ENV_PATH");
 
@@ -140,6 +144,10 @@ public final class Main implements Callable<Integer> {
 
     @Override
     public Integer call() {
+        if (fullVersion) {
+            System.out.println(new GitVersionProvider().fullVersion());
+            return 0;
+        }
         maybeSetLogLevel(logLevel);
 
         try (var fetcher = new AwsSsmParamFetcher(createSsmClient())) {

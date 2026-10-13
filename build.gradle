@@ -17,6 +17,7 @@ plugins {
     id 'org.graalvm.buildtools.native'      version '1.1.14'
     id "com.gradleup.shadow"                version "9.6.1"
     id "com.google.osdetector"              version "1.7.3"
+    id 'com.gorylenko.gradle-git-properties' version '4.0.1'
 }
 
 repositories {
@@ -38,6 +39,27 @@ dependencies {
 
 application {
     mainClass = 'com.github.bfg.awsssmparamsenv.Main'
+}
+
+gitProperties {
+    dateFormat = "yyyy-MM-dd'T'HH:mm:SS'Z'"
+    dateFormatTimeZone = "UTC"
+
+    // if branch can't be determined, e.g. in detached HEAD state,
+    // use GITHUB_REF_NAME env variable - it should contain branch/tag name
+    // SEE: https://docs.github.com/en/actions/reference/workflows-and-actions/variables
+    branch =  System.env['GITHUB_HEAD_REF']
+
+    keys = [
+            'git.branch',
+            'git.build.version',
+            'git.commit.id',
+            'git.commit.id.abbrev',
+            'git.commit.id.describe',
+            'git.commit.time',
+            'git.remote.origin.url',
+    ]
+    extProperty = 'git'
 }
 
 tasks.withType(JavaCompile).configureEach {
