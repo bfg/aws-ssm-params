@@ -91,7 +91,7 @@ graalvmNative {
     binaries {
         main {
             fallback      = false
-            richOutput    = true
+            richOutput    = false
 
             // optimize for faster build time by default
             if (envBool('PROD_BINARY')) {
@@ -107,10 +107,10 @@ graalvmNative {
                     buildArgs.add('--libc=musl')
                 }
 
-                // The G1 garbage collector ('--gc=G1') is currently only supported on AMD64 and AArch64.
-                if (osdetector.arch in ['x86_64', 'aarch64']) {
-                    buildArgs.add("--gc=G1")
-                }
+                // NOTE: the G1 garbage collector ('--gc=G1') is currently only supported on AMD64 and AArch64.
+                //if (osdetector.arch in ['x86_64', 'aarch64']) {
+                //    buildArgs.add("--gc=G1")
+                //}
             }
         }
     }
