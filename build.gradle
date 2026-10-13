@@ -1,0 +1,108 @@
+//
+// build.gradle
+//
+
+buildscript {
+    ext {
+    lombokVer           = "1.18.48"
+    picocliVer          = "4.7.7"
+    aws2SdkVer          = "2.55.12"
+    slfj4jVer           = "2.0.20"
+    logbackVer          = "1.6.5"
+    }
+}
+
+plugins {
+    id 'application'
+    id 'org.graalvm.buildtools.native'      version '1.1.14'
+    id "com.gradleup.shadow"                version "9.6.1"
+    id "com.google.osdetector"              version "1.7.3"
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly             "org.projectlombok:lombok:${lombokVer}"
+    annotationProcessor     "org.projectlombok:lombok:${lombokVer}"
+
+    implementation          "info.picocli:picocli:${picocliVer}"
+    annotationProcessor     "info.picocli:picocli-codegen:${picocliVer}"
+
+    implementation          "org.slf4j:slf4j-api:${slfj4jVer}"
+    implementation          "ch.qos.logback:logback-classic:${logbackVer}"
+
+    implementation          "software.amazon.awssdk:ssm:${aws2SdkVer}"
+}
+
+application {
+    mainClass = 'com.github.bfg.awsssmparamsenv.Main'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+}
+
+tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+// application/shadowJar plugins: disable creation of distribution archives
+distZip.enabled = distTar.enabled = false
+tasks.shadowJar {
+    // enable shadowJar task only if it's explicitly requested via cli by containing "shadowJar" in the task list
+    onlyIf {
+        gradle.startParameter.taskRequests.find {
+            it.args.find { it.contains("shadowJar") } != null
+        } != null
+    }
+
+    mergeServiceFiles()
+
+    // include
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+graalvmNative {
+    toolchainDetection = true
+    binaries {
+        main {
+            fallback      = false
+            richOutput    = true
+
+            // optimize for faster build time by default
+            if (envBool('PROD_BINARY')) {
+                buildArgs.add("-Os")
+            } else {
+                buildArgs.add("-Ob")
+            }
+
+            // linux specifics/optimizations
+            if (osdetector.os == 'linux') {
+                if (System.env.STATIC_BINARY == 'true') {
+                    buildArgs.add('--static')
+                    buildArgs.add('--libc=musl')
+                }
+
+                // The G1 garbage collector ('--gc=G1') is currently only supported on AMD64 and AArch64.
+                if (osdetector.arch in ['x86_64', 'aarch64']) {
+                    buildArgs.add("--gc=G1")
+                }
+            }
+        }
+    }
+}
+
+static boolean envBool(def envVarName, def defaultValue = false) {
+    def value = envStr(envVarName, 'false')
+    return (value in ['1', 't', 'true', 'y', 'yes', 'on'])
+}
+
+static boolean envStr(def envVarName, def defaultValue = '') {
+    def value = System.env[envVarName] ?: defaultValue
+    value.trim()
+}
+
+// vim:shiftwidth=2 softtabstop=2 expandtab
+// EOF
