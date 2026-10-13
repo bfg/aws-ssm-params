@@ -21,6 +21,7 @@ plugins {
     id "com.google.osdetector"                  version "1.7.3"
     id 'com.gorylenko.gradle-git-properties'    version '4.0.1'
     id 'com.adarshr.test-logger'                version '4.0.0'
+    id 'net.researchgate.release'               version '3.1.0'
 }
 
 // import common utils
@@ -112,6 +113,19 @@ gitProperties {
     ]
     extProperty = 'git'
 }
+
+release {
+    tagTemplate     = 'v${version}'
+
+    // there's no point rebuilding commits made by this plugin
+    newVersionCommitMessage = '[Gradle Release Plugin] [ci skip] - new version commit: '
+
+    git {
+        // release can be made on any branch
+        requireBranch.set("")
+    }
+}
+
 
 tasks.withType(JavaCompile).configureEach {
     options.release = 25
