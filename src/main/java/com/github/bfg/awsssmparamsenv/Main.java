@@ -12,6 +12,8 @@ import picocli.CommandLine.Parameters;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
 
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
@@ -96,13 +98,22 @@ public final class Main implements Callable<Integer> {
     @Parameters(paramLabel = "PATH", description = "one or more SSM parameter store path(s) to fetch parameters from  (default: ${DEFAULT-VALUE})")
     List<String> paths = envStrList("SSM_PATHS", "AWS_ENV_PATH");
 
+    // actual output (needed for testing)
+    static PrintStream output = System.out;
+
     enum OutFormat {
         exports,
         dotenv
     }
 
-    static void main(String[] args) {
-        System.exit(new CommandLine(new Main()).execute(args));
+    static void main(String... args) {
+        System.exit(runMain(args));
+    }
+
+    static int runMain(String... args) {
+        return new CommandLine(new Main())
+                .setOut(new PrintWriter(output, true))
+                .execute(args);
     }
 
     private String envString(String... envVarNames) {
@@ -162,7 +173,7 @@ public final class Main implements Callable<Integer> {
                     .build();
 
             var ssmParams = fetcher.fetchParameters(query);
-            System.out.println(formatParams(ssmParams));
+            output.println(formatParams(ssmParams));
             return 0;
         } catch (Throwable t) {
             log.debug("failed to read SSM parameters", t);
@@ -178,17 +189,32 @@ public final class Main implements Callable<Integer> {
     }
 
     private String formatParamsDotEnv(Map<String, String> params) {
-        return formatParams(params, it -> it.getKey() + "=\"" + it.getValue() + "\"");
+        return formatParams(params, it ->
+                it.getKey() + "=\"" + quoteShellValue(it.getValue()) + "\"");
     }
 
     private String formatParamsExports(Map<String, String> params) {
-        return formatParams(params, it -> "export " + it.getKey() + "=$'" + it.getValue() + "'");
+        return formatParams(params, it ->
+                "export '" + it.getKey() + "=" + quoteShellValue(it.getValue()) + "'");
+    }
+
+    static String quoteShellValue(String value) {
+        if (value.indexOf('\0') >= 0) {
+            throw new IllegalArgumentException("Shell values cannot contain NUL characters.");
+        }
+        return value
+                .replace("\"", "\\\"")
+                .replace("'", "'\\''")
+                .replace("`", "\\`")
+                .replace("$", "\\$");
     }
 
     private String formatParams(Map<String, String> params,
                                 Function<Map.Entry<String, String>, String> formatter) {
         return params.entrySet().stream()
                 .map(formatter)
+                .filter(Objects::nonNull)
+                .filter(it -> !it.isBlank())
                 .collect(Collectors.joining("\n"));
     }
 

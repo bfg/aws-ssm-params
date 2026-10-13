@@ -5,17 +5,22 @@ A small CLI tool that securely exposes parameters and secrets stored in one or m
 a format that can be used by shell to export environment variables before starting a real
 application or to construct [docker compose .env][dc-env].
 
-## Build
+# Usage
 
-You need [GraalVM][graalvm] to compile this project.
+## Docker
 
-```sh
-./gradlew nativeCompile
+```Dockerfile
+FROM gracnar/aws-ssm-params-env:<version> AS aspe
+
+FROM your-base-img
+
+# copy aws-ssm-params-env
+COPY    --from=aspe     /usr/local/bin/aws-ssm-params-env /usr/local/bin
+
+# aws-ssm-params-env now it can be used as part of a entrypoint script
 ```
 
-The executable is written to `build/native/nativeCompile/`.
-
-## Use
+## CLI
 
 The AWS SDK uses its standard credential and region configuration, such as `AWS_PROFILE` and `AWS_REGION`.
 
@@ -72,5 +77,28 @@ EXAMPLES:
   AWS_ENV_PATH="/foo, /bar, /baz/kaz"  aws-ssm-params-env
 ```
 
+## Local development
+
+### Building
+
+You need [GraalVM][graalvm] to compile this project into a native binary.
+
+```sh
+./gradlew nativeCompile
+```
+
+The executable is written to `build/native/nativeCompile/`.
+
+### Tests
+
+The integration tests use a LocalStack container with only SSM enabled. Docker Compose
+runs the initialization script to create plaintext and encrypted parameters in three paths.
+
+```sh
+docker compose up -d --wait
+./gradlew test
+```
+
+[graalvm]: https://www.graalvm.org/downloads/
 [aws-ssm-param-store]: https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html
 [dc-env]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#use-the-env_file-attribute

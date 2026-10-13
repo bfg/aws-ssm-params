@@ -89,9 +89,36 @@ jobs:
           echo "CONTAINER_IMG_VERSION="$(./gradlew -q dockerImgVersion) >> "$GITHUB_OUTPUT"
           echo "CONTAINER_IMG_TAG="$(./gradlew -q dockerImgTag) >> "$GITHUB_OUTPUT"
 
+      - name: Start compose services
+        run: docker compose up -d --wait
+
       - name: Display environment variables
         if:   env.DEBUG_ENV == 'true' || contains(github.event.pull_request.labels.*.name, 'debug-env')
         run:  env | sort -k1
+
+      - name: Run tests
+        if:   env.SKIP_TESTS != 'true' && !contains(github.event.pull_request.labels.*.name, 'skip-tests')
+        run: ./gradlew --configuration-cache test
+        env:
+          # NOTE: needed, otherwise tests on gh actions fail due to a non-existing aws credential source
+          AWS_ACCESS_KEY_ID:      foo
+          AWS_SECRET_ACCESS_KEY:  bar
+          AWS_REGION:             us-east-1
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v6.4.1
+        if:   github.ref_type != 'tag' && env.SKIP_TESTS != 'true' && !contains(github.event.pull_request.labels.*.name, 'skip-tests') && !cancelled()
+        with:
+          report_paths: '**/build/test-results/test/TEST-*.xml'
+
+      - name: Upload build reports in case of test failure
+        uses: actions/upload-artifact@v7.0.1
+        if:   github.ref_type != 'tag' && env.SKIP_TESTS != 'true' && !contains(github.event.pull_request.labels.*.name, 'skip-tests') && failure()
+        with:
+          name: build-reports
+          retention-days: 21
+          path: |
+            **/build/reports
 
       - name: Build application binary
         run: ./gradlew --configuration-cache nativeCompile

@@ -20,7 +20,7 @@
   </contextListener>
 
   <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
-    <target>System.out</target>
+    <target>System.err</target>
     <encoder>
       <pattern>%cyan([%d{yyyy/MM/dd HH:mm:ss.SSS}]) %boldWhite([%t]) %highlight(%-5p) %magenta(%logger{1}): [%X] %msg%n</pattern>
     </encoder>
