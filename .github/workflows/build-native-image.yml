@@ -146,11 +146,17 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v7
 
-      - name: Download binary from artifacts
+      - name: Download x86_64 binary from artifacts
         uses: actions/download-artifact@v8
         with:
           name: aws-ssm-params-env-linux-x86_64
-          path: docker
+          path: docker/amd64
+
+      - name: Download aarch64 binary from artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: aws-ssm-params-env-linux-aarch64
+          path: docker/arm64
 
       - name: Display environment variables
         if:   env.DEBUG_ENV == 'true' || contains(github.event.pull_request.labels.*.name, 'debug-env')
@@ -162,14 +168,17 @@ jobs:
             -u "${{ secrets.CONTAINER_REGISTRY_USER }}" \
             "${{ env.CONTAINER_REGISTRY}}" <<< "${{ secrets.CONTAINER_REGISTRY_PASS }}"
 
-      - name: Build container image
-        run:  docker build -t "${{ env.CONTAINER_IMG_TAG }}" docker
+      - name: Set up Docker Buildx
+        run:  docker buildx create --use
+
+      - name: Build container image for verification
+        run:  docker buildx build --platform linux/amd64 --load -t "${{ env.CONTAINER_IMG_TAG }}" docker
 
       - name: Run built container image
         run:  docker run --rm "${{ env.CONTAINER_IMG_TAG }}" --version
 
-      - name: Push built container image
-        run:  docker push "${{ env.CONTAINER_IMG_TAG }}"
+      - name: Build and push multi-platform container image
+        run:  docker buildx build --platform linux/amd64,linux/arm64 --push -t "${{ env.CONTAINER_IMG_TAG }}" docker
 
 # vim:shiftwidth=2 softtabstop=2 expandtab
 # EOF
