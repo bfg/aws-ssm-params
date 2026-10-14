@@ -52,7 +52,7 @@ class MainSpec extends Specification {
 
     def '[fmt: exports] should fetch parameters in exports format'() {
         given:
-        def args =cliArgs('-tlsu', '--no-recursive', '/test').toList()
+        def args =cliArgs('-rtlsu', '/test').toList()
         if (!fmt.isBlank()) args.addAll(['-F', fmt])
 
         when:
@@ -90,7 +90,7 @@ export 'SHELL_INJECTION_I=eval x=\\$((1 + 1))\'
 
     def '[fmt: exports] should fetch parameters in dotenv format'() {
         given:
-        def args =cliArgs('-tlsu', '--no-recursive', '-F', 'dotenv', '/test')
+        def args =cliArgs('-tlsu', '--recursive', '-F', 'dotenv', '/test')
 
         when:
         def res = Main.runMain(args)

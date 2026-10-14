@@ -24,7 +24,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Command(name = "aws-ssm-params-env",
-        description = "Fetches AWS SSM parameter store parameters and formats the output",
+        description = "%nFetches AWS SSM parameter store parameters and formats the output.%n",
         mixinStandardHelpOptions = true,
         versionProvider = GitVersionProvider.class,
         showDefaultValues = true,
@@ -33,14 +33,14 @@ import java.util.stream.Collectors;
         footer = {
                 "ENVIRONMENT",
                 "",
-                "  SSM_PATHS        :: comma separated list of AWS SSM parameter paths to fetch",
-                "  SSM_RECURSIVE    :: recursively fetch parameters from sub-paths",
-                "  SSM_SORT         :: sort fetched parameters by name",
-                "  SSM_SORT_REVERSE :: sort fetched parameters by name in reverse order",
-                "  SSM_USE_LAST     :: use last fetched value",
-                "  SSM_UPPERCASE    :: uppercase ",
-                "  SSM_TRIM         :: comma separated list of AWS SSM parameter paths to fetch",
-                "  SSM_FORMAT       :: comma separated list of AWS SSM parameter paths to fetch",
+                "  SSM_PATHS        :: (csv string) comma separated list of AWS SSM parameter paths to fetch",
+                "  SSM_RECURSIVE    :: (bool) recursively fetch parameters from sub-paths?",
+                "  SSM_SORT         :: (bool) sort fetched parameters by name?",
+                "  SSM_SORT_REVERSE :: (bool) sort fetched parameters by name in reverse order",
+                "  SSM_USE_LAST     :: (bool) use last fetched value?",
+                "  SSM_UPPERCASE    :: (bool) uppercase parameter names?",
+                "  SSM_TRIM         :: (bool) trim fetched parameter values?",
+                "  SSM_FORMAT       :: (string) output format (example: exports, dotenv)",
                 "  AWS_ENV_PATH     :: alias for SSM_PATHS",
                 "",
                 "EXAMPLES:",
@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
         })
 @Slf4j
 public final class Main implements Callable<Integer> {
-    @Option(names = {"-r", "--recursive"}, negatable = true, fallbackValue = "false",
+    @Option(names = {"-r", "--recursive"}, negatable = true,
             description = "recursively fetch parameters from sub-paths")
     boolean recursive = envBool(false, "SSM_RECURSIVE");
 
@@ -73,7 +73,6 @@ public final class Main implements Callable<Integer> {
     @Option(names = {"-u", "--uppercase"}, negatable = true, fallbackValue = "true",
             description = "uppercase parameter names?")
     boolean uppercase = envBool(true, "SSM_UPPERCASE");
-    ;
 
     @Option(names = {"-t", "--trim"}, negatable = true, fallbackValue = "true",
             description = "trim fetched AWS SSM parameter values?")
