@@ -180,5 +180,9 @@ jobs:
       - name: Build and push multi-platform container image
         run:  docker buildx build --platform linux/amd64,linux/arm64 --push -t "${{ env.CONTAINER_IMG_TAG }}" docker
 
+      - name: Tag latest release image
+        if:   github.ref_type == 'tag' && !endsWith(env.CONTAINER_IMG_VERSION, '-snapshot')
+        run:  docker buildx imagetools create --tag "${CONTAINER_IMG_TAG%:*}:latest" "$CONTAINER_IMG_TAG"
+
 # vim:shiftwidth=2 softtabstop=2 expandtab
 # EOF
