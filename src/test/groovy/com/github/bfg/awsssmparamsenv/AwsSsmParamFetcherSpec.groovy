@@ -206,6 +206,12 @@ class AwsSsmParamFetcherSpec extends Specification {
         G: '"\'x',
         H: '$HOME',
         I: 'eval x=$((1 + 1))',
+        J: "{\"app\":\"trololo-app\",\"name\":\"trololo-app\",\"type\":\"Load Balanced Web Service \"}",
+        K: "foo\\n  bar",
+        L: "foo\\n\\t \\n \\t bar",
+        M: '`ls /etc`',
+        N: '$(ls /etc)',
+        O: 'my_super_function'
     ])
   }
 
@@ -243,7 +249,13 @@ class AwsSsmParamFetcherSpec extends Specification {
         "SHELL_INJECTION_F" : "'x\"",
         "SHELL_INJECTION_G" : "\"'x",
         "SHELL_INJECTION_H" : "\$HOME",
-        "SHELL_INJECTION_I" : "eval x=\$((1 + 1))"])
+        "SHELL_INJECTION_I" : "eval x=\$((1 + 1))",
+        "SHELL_INJECTION_J" : '{"app":"trololo-app","name":"trololo-app","type":"Load Balanced Web Service "}',
+        "SHELL_INJECTION_K" : "foo\\n  bar",
+        "SHELL_INJECTION_L" : "foo\\n\\t \\n \\t bar",
+        "SHELL_INJECTION_M" : "`ls /etc`",
+        "SHELL_INJECTION_N" : "\$(ls /etc)",
+        "SHELL_INJECTION_O" : "my_super_function"])
   }
 
   def assertJson(def actual, def expected) {
