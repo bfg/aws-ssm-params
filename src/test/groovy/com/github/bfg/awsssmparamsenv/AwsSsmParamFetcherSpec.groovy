@@ -9,248 +9,248 @@ import spock.lang.Shared
 import spock.lang.Specification
 
 class AwsSsmParamFetcherSpec extends Specification {
-    private static final List<String> PATHS = ['/test/alpha', '/test/beta', '/test/gamma']
+  private static final List<String> PATHS = ['/test/alpha', '/test/beta', '/test/gamma']
 
-    @Shared
-    @AutoCleanup
-    def fetcher = createFetcher()
+  @Shared
+  @AutoCleanup
+  def fetcher = createFetcher()
 
-    def gson = new GsonBuilder()
-            .disableHtmlEscaping()
-            .setPrettyPrinting().create();
+  def gson = new GsonBuilder()
+      .disableHtmlEscaping()
+      .setPrettyPrinting().create()
 
-    SsmParamQuery.SsmParamQueryBuilder newBuilder() {
-        SsmParamQuery.builder().paths(PATHS)
-    }
+  SsmParamQuery.SsmParamQueryBuilder newBuilder() {
+    SsmParamQuery.builder().paths(PATHS)
+  }
 
-    def createFetcher() {
-        SsmClient client = SsmClient.builder()
-                .endpointOverride(URI.create('http://localhost:4566'))
-                .region(Region.US_EAST_1)
-                .build()
+  def createFetcher() {
+    SsmClient client = SsmClient.builder()
+        .endpointOverride(URI.create('http://localhost:4566'))
+        .region(Region.US_EAST_1)
+        .build()
 
-        new AwsSsmParamFetcher(client)
-    }
+    new AwsSsmParamFetcher(client)
+  }
 
-    def 'fetchParameters[default, top, no-recurse] should return expected result'() {
-        given:
-        def query = newBuilder().clearPaths().path('/test').build()
+  def 'fetchParameters[default, top, no-recurse] should return expected result'() {
+    given:
+    def query = newBuilder().clearPaths().path('/test').build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        res.isEmpty()
-    }
+    then:
+    res.isEmpty()
+  }
 
-    def 'fetchParameters[default] fetchParameters should return expected result'() {
-        given:
-        def query = newBuilder().build()
+  def 'fetchParameters[default] fetchParameters should return expected result'() {
+    given:
+    def query = newBuilder().build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        assertJson(res, [
-                duplicate   : 'alpha-duplicate',
-                display_name: ' Alpha Display Name ',
-                token       : 'alpha-token',
-                endpoint    : 'beta-endpoint',
-                password    : 'beta-password',
-                enabled     : 'gamma-enabled',
-                api_key     : 'gamma-api_key',
-                foo_bar_BaZ : 'gamma-foo-bar-baz',
-        ])
-    }
+    then:
+    assertJson(res, [
+        duplicate   : 'alpha-duplicate',
+        display_name: ' Alpha Display Name ',
+        token       : 'alpha-token',
+        endpoint    : 'beta-endpoint',
+        password    : 'beta-password',
+        enabled     : 'gamma-enabled',
+        api_key     : 'gamma-api_key',
+        foo_bar_BaZ : 'gamma-foo-bar-baz',
+    ])
+  }
 
-    def 'fetchParameters[trim,last_one] should return expected result'() {
-        given:
-        def query = newBuilder()
-                .lastOneWins(true)
-                .trimValues(true)
-                .build()
+  def 'fetchParameters[trim,last_one] should return expected result'() {
+    given:
+    def query = newBuilder()
+        .lastOneWins(true)
+        .trimValues(true)
+        .build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        assertJson(res, [
-                duplicate   : 'beta-duplicate',
-                display_name: 'Alpha Display Name',
-                token       : 'alpha-token',
-                endpoint    : 'beta-endpoint',
-                password    : 'beta-password',
-                enabled     : 'gamma-enabled',
-                api_key     : 'gamma-api_key',
-                foo_bar_BaZ : 'gamma-foo-bar-baz',
+    then:
+    assertJson(res, [
+        duplicate   : 'beta-duplicate',
+        display_name: 'Alpha Display Name',
+        token       : 'alpha-token',
+        endpoint    : 'beta-endpoint',
+        password    : 'beta-password',
+        enabled     : 'gamma-enabled',
+        api_key     : 'gamma-api_key',
+        foo_bar_BaZ : 'gamma-foo-bar-baz',
 
-        ])
-    }
+    ])
+  }
 
-    def 'fetchParameters[trim,last_one, sort] should return expected result'() {
-        given:
-        def query = newBuilder()
-                .lastOneWins(true)
-                .trimValues(true)
-                .sort(true)
-                .build()
+  def 'fetchParameters[trim,last_one, sort] should return expected result'() {
+    given:
+    def query = newBuilder()
+        .lastOneWins(true)
+        .trimValues(true)
+        .sort(true)
+        .build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        assertJson(res, [
-                api_key     : 'gamma-api_key',
-                display_name: 'Alpha Display Name',
-                duplicate   : 'beta-duplicate',
-                enabled     : 'gamma-enabled',
-                endpoint    : 'beta-endpoint',
-                foo_bar_BaZ : 'gamma-foo-bar-baz',
-                password    : 'beta-password',
-                token       : 'alpha-token',
-        ])
-    }
+    then:
+    assertJson(res, [
+        api_key     : 'gamma-api_key',
+        display_name: 'Alpha Display Name',
+        duplicate   : 'beta-duplicate',
+        enabled     : 'gamma-enabled',
+        endpoint    : 'beta-endpoint',
+        foo_bar_BaZ : 'gamma-foo-bar-baz',
+        password    : 'beta-password',
+        token       : 'alpha-token',
+    ])
+  }
 
-    def 'fetchParameters[trim,last_one,reverse-sort] should return expected result'() {
-        given:
-        def query = newBuilder()
-                .lastOneWins(true)
-                .trimValues(true)
-                .reverseSort(true)
-                .build()
+  def 'fetchParameters[trim,last_one,reverse-sort] should return expected result'() {
+    given:
+    def query = newBuilder()
+        .lastOneWins(true)
+        .trimValues(true)
+        .reverseSort(true)
+        .build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        assertJson(res, [
-                token       : 'alpha-token',
-                password    : 'beta-password',
-                foo_bar_BaZ : 'gamma-foo-bar-baz',
-                endpoint    : 'beta-endpoint',
-                enabled     : 'gamma-enabled',
-                duplicate   : 'beta-duplicate',
-                display_name: 'Alpha Display Name',
-                api_key     : 'gamma-api_key',
-        ])
-    }
+    then:
+    assertJson(res, [
+        token       : 'alpha-token',
+        password    : 'beta-password',
+        foo_bar_BaZ : 'gamma-foo-bar-baz',
+        endpoint    : 'beta-endpoint',
+        enabled     : 'gamma-enabled',
+        duplicate   : 'beta-duplicate',
+        display_name: 'Alpha Display Name',
+        api_key     : 'gamma-api_key',
+    ])
+  }
 
-    def 'fetchParameters[trim,last_one,reverse-sort] should return expected result'() {
-        given:
-        def query = newBuilder()
-                .lastOneWins(true)
-                .trimValues(true)
-                .reverseSort(true)
-                .uppercase(true)
-                .build()
+  def 'fetchParameters[trim,last_one,reverse-sort] should return expected result'() {
+    given:
+    def query = newBuilder()
+        .lastOneWins(true)
+        .trimValues(true)
+        .reverseSort(true)
+        .uppercase(true)
+        .build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        assertJson(res, [
-                TOKEN       : 'alpha-token',
-                PASSWORD    : 'beta-password',
-                FOO_BAR_BAZ : 'gamma-foo-bar-baz',
-                ENDPOINT    : 'beta-endpoint',
-                ENABLED     : 'gamma-enabled',
-                DUPLICATE   : 'beta-duplicate',
-                DISPLAY_NAME: 'Alpha Display Name',
-                API_KEY     : 'gamma-api_key',
-        ])
-    }
+    then:
+    assertJson(res, [
+        TOKEN       : 'alpha-token',
+        PASSWORD    : 'beta-password',
+        FOO_BAR_BAZ : 'gamma-foo-bar-baz',
+        ENDPOINT    : 'beta-endpoint',
+        ENABLED     : 'gamma-enabled',
+        DUPLICATE   : 'beta-duplicate',
+        DISPLAY_NAME: 'Alpha Display Name',
+        API_KEY     : 'gamma-api_key',
+    ])
+  }
 
-    def 'fetchParameters[gamma] should return expected result'() {
-        given:
-        def query = newBuilder()
-                .clearPaths()
-                .path('test/gamma')
-                .trimValues(true)
-                .sort(true)
-                .uppercase(true)
-                .build()
+  def 'fetchParameters[gamma] should return expected result'() {
+    given:
+    def query = newBuilder()
+        .clearPaths()
+        .path('test/gamma')
+        .trimValues(true)
+        .sort(true)
+        .uppercase(true)
+        .build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        assertJson(res, [
-                API_KEY    : 'gamma-api_key',
-                ENABLED    : 'gamma-enabled',
-                FOO_BAR_BAZ: 'gamma-foo-bar-baz',
-        ])
-    }
+    then:
+    assertJson(res, [
+        API_KEY    : 'gamma-api_key',
+        ENABLED    : 'gamma-enabled',
+        FOO_BAR_BAZ: 'gamma-foo-bar-baz',
+    ])
+  }
 
-    def 'fetchParameters[shell-injection] should return expected result'() {
-        given:
-        def query = newBuilder()
-                .clearPaths()
-                .path('/test/shell-injection')
-                .recursive(true)
-                .trimValues(true)
-                .sort(true)
-                .uppercase(true)
-                .build()
+  def 'fetchParameters[shell-injection] should return expected result'() {
+    given:
+    def query = newBuilder()
+        .clearPaths()
+        .path('/test/shell-injection')
+        .recursive(true)
+        .trimValues(true)
+        .sort(true)
+        .uppercase(true)
+        .build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        assertJson(res, [
-                A: 'a=`ls /etc`',
-                B: 'b=$(ls /etc)',
-                C: '"x',
-                D: 'x"',
-                E: '"x"',
-                F: "'x\"",
-                G: '"\'x',
-                H: '$HOME',
-                I: 'eval x=$((1 + 1))',
-        ])
-    }
+    then:
+    assertJson(res, [
+        A: 'a=`ls /etc`',
+        B: 'b=$(ls /etc)',
+        C: '"x',
+        D: 'x"',
+        E: '"x"',
+        F: "'x\"",
+        G: '"\'x',
+        H: '$HOME',
+        I: 'eval x=$((1 + 1))',
+    ])
+  }
 
-    def 'fetchParameters[all should be fetched] should return expected result'() {
-        given:
-        def query = newBuilder()
-                .clearPaths()
-                .path('/test////')
-                .recursive(true)
-                .trimValues(true)
-                .sort(true)
-                .uppercase(true)
-                .build()
+  def 'fetchParameters[all should be fetched] should return expected result'() {
+    given:
+    def query = newBuilder()
+        .clearPaths()
+        .path('/test////')
+        .recursive(true)
+        .trimValues(true)
+        .sort(true)
+        .uppercase(true)
+        .build()
 
-        when:
-        def res = fetcher.fetchParameters(query)
+    when:
+    def res = fetcher.fetchParameters(query)
 
-        then:
-        assertJson(res, [
-                "ALPHA_DISPLAY_NAME": "Alpha Display Name",
-                "ALPHA_DUPLICATE"   : "alpha-duplicate",
-                "ALPHA_TOKEN"       : "alpha-token",
-                "BETA_DUPLICATE"    : "beta-duplicate",
-                "BETA_ENDPOINT"     : "beta-endpoint",
-                "BETA_PASSWORD"     : "beta-password",
-                "GAMMA_0BAZ"        : "gamma-zero-baz",
-                "GAMMA_API_KEY"     : "gamma-api_key",
-                "GAMMA_ENABLED"     : "gamma-enabled",
-                "GAMMA_FOO_BAR_BAZ" : "gamma-foo-bar-baz",
-                "SHELL_INJECTION_A" : "a=`ls /etc`",
-                "SHELL_INJECTION_B" : "b=\$(ls /etc)",
-                "SHELL_INJECTION_C" : "\"x",
-                "SHELL_INJECTION_D" : "x\"",
-                "SHELL_INJECTION_E" : "\"x\"",
-                "SHELL_INJECTION_F" : "'x\"",
-                "SHELL_INJECTION_G" : "\"'x",
-                "SHELL_INJECTION_H" : "\$HOME",
-                "SHELL_INJECTION_I" : "eval x=\$((1 + 1))"])
-    }
+    then:
+    assertJson(res, [
+        "ALPHA_DISPLAY_NAME": "Alpha Display Name",
+        "ALPHA_DUPLICATE"   : "alpha-duplicate",
+        "ALPHA_TOKEN"       : "alpha-token",
+        "BETA_DUPLICATE"    : "beta-duplicate",
+        "BETA_ENDPOINT"     : "beta-endpoint",
+        "BETA_PASSWORD"     : "beta-password",
+        "GAMMA_0BAZ"        : "gamma-zero-baz",
+        "GAMMA_API_KEY"     : "gamma-api_key",
+        "GAMMA_ENABLED"     : "gamma-enabled",
+        "GAMMA_FOO_BAR_BAZ" : "gamma-foo-bar-baz",
+        "SHELL_INJECTION_A" : "a=`ls /etc`",
+        "SHELL_INJECTION_B" : "b=\$(ls /etc)",
+        "SHELL_INJECTION_C" : "\"x",
+        "SHELL_INJECTION_D" : "x\"",
+        "SHELL_INJECTION_E" : "\"x\"",
+        "SHELL_INJECTION_F" : "'x\"",
+        "SHELL_INJECTION_G" : "\"'x",
+        "SHELL_INJECTION_H" : "\$HOME",
+        "SHELL_INJECTION_I" : "eval x=\$((1 + 1))"])
+  }
 
-    def assertJson(def actual, def expected) {
-        def actualJson = gson.toJson(actual)
-        def expectedJson = gson.toJson(expected)
+  def assertJson(def actual, def expected) {
+    def actualJson = gson.toJson(actual)
+    def expectedJson = gson.toJson(expected)
 
-        assert actualJson == expectedJson
-        true
-    }
+    assert actualJson == expectedJson
+    true
+  }
 }
