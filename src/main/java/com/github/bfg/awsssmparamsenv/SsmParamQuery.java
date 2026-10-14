@@ -12,7 +12,7 @@ public record SsmParamQuery(
     boolean recursive,
     boolean sort,
     boolean reverseSort,
-    boolean lastOneWins,
+    boolean useLast,
     boolean uppercase,
     boolean trimValues
 ) {

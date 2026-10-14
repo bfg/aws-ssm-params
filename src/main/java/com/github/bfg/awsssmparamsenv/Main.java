@@ -15,23 +15,22 @@ import software.amazon.awssdk.services.ssm.SsmClient;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.URI;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Command(name = "aws-ssm-params-env",
-    description = "%nFetches AWS SSM parameter store parameters and formats the output.%n",
+@Command(name = Main.CMD_NAME,
+    description = "%nExports parameters from AWS SSM parameter store to environment variables or envfile.%n",
+    usageHelpWidth = 120,
     mixinStandardHelpOptions = true,
     versionProvider = GitVersionProvider.class,
-    showDefaultValues = true,
     sortOptions = false,
     footerHeading = "%n%n",
     footer = {
-        "ENVIRONMENT",
+        "ENVIRONMENT VARIABLES",
+        "",
+        "The behaviour of this tool can be altered by setting the following environment variables:",
         "",
         "  SSM_PATHS        :: (csv string) comma separated list of AWS SSM parameter paths to fetch",
         "  SSM_RECURSIVE    :: (bool) recursively fetch parameters from sub-paths?",
@@ -45,59 +44,82 @@ import java.util.stream.Collectors;
         "",
         "EXAMPLES:",
         "",
-        "# fetch parameters from AWS SSM paths /foo, /bar, /baz/kaz",
-        "  aws-ssm-params-env /foo /bar /baz/kaz",
+        "# fetch parameters from AWS SSM paths /dev/common, /dev/my-app, /dev/my-app/special",
+        "# without recursive querying",
+        "  " + Main.CMD_NAME + " /dev/common /dev/my-app /dev/my-app/special",
         "",
-        "# fetch parameters from AWS SSM paths /foo, /bar, /baz/kaz",
-        "  SSM_PATHS=\"/foo, /bar, /baz/kaz\"  aws-ssm-params-env",
-        "  AWS_ENV_PATH=\"/foo, /bar, /baz/kaz\"  aws-ssm-params-env"
+        "# fetch parameters from AWS SSM paths /dev/common, /dev/my-app, recursively, taking first parameter if there",
+        "# is pa parameter with the same name  in subsequential parameter paths",
+        "  " + Main.CMD_NAME + " -r /dev/common /dev/my-app",
+        "",
+        "# fetch parameters from AWS SSM paths /dev/common, /dev/my-app, recursively, taking last parameter if there",
+        "# is pa parameter with the same name  in subsequential parameter paths",
+        "  " + Main.CMD_NAME + " -l -r /dev/common /dev/my-app",
+        "",
+        "# completely env variable driven invocation, useful for ENTRYPOINT integration",
+        "  SSM_PATHS=\"/dev/common,/dev/my-app\" SSM_RECURSIVE=1 SSM_USE_LAST=1 " + Main.CMD_NAME,
     })
 @Slf4j
 public final class Main implements Callable<Integer> {
+  static final String CMD_NAME = "aws-ssm-params-env";
+
   @Option(names = {"-r", "--recursive"}, negatable = true,
-      description = "recursively fetch parameters from sub-paths")
+      showDefaultValue = Visibility.ALWAYS,
+      description = "Recursively fetch parameters from sub-paths")
   boolean recursive = envBool(false, "SSM_RECURSIVE");
 
   @Option(names = {"-s", "--sort"}, negatable = true, fallbackValue = "true",
-      description = "sort fetched parameters by name in output?")
+      showDefaultValue = Visibility.ALWAYS,
+      description = "Sort fetched parameters by name in output?")
   boolean sort = envBool(true, "SSM_SORT");
 
   @Option(names = {"-R", "--reverse-sort"},
-      description = "sort fetched parameters by name in reverse order?")
+      showDefaultValue = Visibility.ALWAYS,
+      description = "Sort fetched parameters by name in reverse order?")
   boolean reverseSort = envBool(false, "SSM_SORT_REVERSE");
 
-  @Option(names = {"-l", "--last-one-wins"},
-      description = "use last parameter with distinct name will be emitted instead of the first one; useful when same parameter name is contained in multiple paths")
-  boolean lastOneWins = envBool(false, "SSM_USE_LAST");
+  @Option(names = {"-l", "--use-last"}, negatable = true,
+      showDefaultValue = Visibility.ALWAYS,
+      description = "Use last parameter with distinct name instead of the first one? Useful when same parameter name is contained in multiple paths")
+  boolean useLast = envBool(false, "SSM_USE_LAST");
 
   @Option(names = {"-u", "--uppercase"}, negatable = true, fallbackValue = "true",
-      description = "uppercase parameter names?")
+      showDefaultValue = Visibility.ALWAYS,
+      description = "Uppercase parameter names?")
   boolean uppercase = envBool(true, "SSM_UPPERCASE");
 
   @Option(names = {"-t", "--trim"}, negatable = true, fallbackValue = "true",
-      description = "trim fetched AWS SSM parameter values?")
+      showDefaultValue = Visibility.ALWAYS,
+      description = "Trim fetched AWS SSM parameter values?")
   boolean trimValues = envBool(true, "SSM_TRIM");
 
-  @Option(names = {"-F", "--format"}, showDefaultValue = Visibility.ALWAYS,
-      description = "output format, possible values: (exports, dotenv)")
+  @Option(names = {"-f", "-F", "--format"},
+      showDefaultValue = Visibility.ALWAYS,
+      description = "Output format (possible values: exports, dotenv)")
   OutFormat outputFormat = envObj(OutFormat.exports, OutFormat::valueOf, "SSM_FORMAT");
 
-  @Option(names = {"--endpoint"}, description = "AWS endpoint (optional, useful for testing)")
+  @Option(names = {"--endpoint"},
+      showDefaultValue = Visibility.ALWAYS,
+      description = "AWS endpoint (optional, useful for testing)")
   String endpoint = "";
 
-  @Option(names = {"--region"}, description = "AWS region (optional, useful for testing)")
+  @Option(names = {"--region"},
+      showDefaultValue = Visibility.ALWAYS,
+      description = "AWS region (optional, useful for testing)")
   String region = "";
 
-  @Option(names = {"-L", "--log-level"}, description = "logger level (off/warn/info/debug/trace)")
+  @Option(names = {"-L", "--log-level"}, description = "Logger level (off/warn/info/debug/trace)")
   String logLevel = "";
 
-  @Option(names = {"--full-version"}, description = "display detailed application version")
+  @Option(names = {"--full-version"}, description = "Display detailed application version")
   boolean fullVersion = false;
 
-  @Parameters(paramLabel = "PATH", description = "one or more SSM parameter store path(s) to fetch parameters from  (default: ${DEFAULT-VALUE})")
+  @Parameters(paramLabel = "PATH",
+      showDefaultValue = Visibility.ALWAYS,
+      description = "One or more AWS SSM parameter store paths to fetch parameters from")
   List<String> paths = envStrList("SSM_PATHS", "AWS_ENV_PATH");
 
-  // actual output (needed for testing)
+  // actual output stream (needed for testing)
   static PrintStream output = System.out;
 
   enum OutFormat {
@@ -155,8 +177,7 @@ public final class Main implements Callable<Integer> {
   @Override
   public Integer call() {
     if (fullVersion) {
-      System.out.println(new GitVersionProvider().fullVersion());
-      return 0;
+      return displayFullVersion();
     }
     maybeSetLogLevel(logLevel);
 
@@ -166,10 +187,13 @@ public final class Main implements Callable<Integer> {
           .recursive(recursive)
           .sort(sort)
           .reverseSort(reverseSort)
-          .lastOneWins(lastOneWins)
+          .useLast(useLast)
           .uppercase(uppercase)
           .trimValues(trimValues)
           .build();
+
+
+      log.warn("created query {}", query);
 
       var ssmParams = fetcher.fetchParameters(query);
 
@@ -184,6 +208,28 @@ public final class Main implements Callable<Integer> {
       log.debug("failed to read SSM parameters", t);
       return die("failed to read SSM parameters", t);
     }
+  }
+
+  private int displayFullVersion() {
+    var gitPropStr = new GitVersionProvider().fullVersion();
+
+    var sysProps = System.getProperties();
+
+    var shouldContain = Set.of(
+        "java.runtime.version",
+        "java.vm.name",
+        "java.vendor.version"
+    );
+    var sysPropsStr = sysProps.keySet().stream()
+        .map(Object::toString)
+        .filter(shouldContain::contains)
+        .sorted()
+        .map(it -> it + "=" + sysProps.get(it))
+        .collect(Collectors.joining(System.lineSeparator()));
+
+    var separator = System.lineSeparator() + System.lineSeparator();
+    output.println(gitPropStr + separator + sysPropsStr);
+    return 0;
   }
 
   private String formatParams(Map<String, String> params) {
