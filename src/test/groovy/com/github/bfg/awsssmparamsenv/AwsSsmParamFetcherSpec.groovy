@@ -66,7 +66,7 @@ class AwsSsmParamFetcherSpec extends Specification {
   def 'fetchParameters[trim,last_one] should return expected result'() {
     given:
     def query = newBuilder()
-        .lastOneWins(true)
+        .useLast(true)
         .trimValues(true)
         .build()
 
@@ -90,7 +90,7 @@ class AwsSsmParamFetcherSpec extends Specification {
   def 'fetchParameters[trim,last_one, sort] should return expected result'() {
     given:
     def query = newBuilder()
-        .lastOneWins(true)
+        .useLast(true)
         .trimValues(true)
         .sort(true)
         .build()
@@ -114,7 +114,7 @@ class AwsSsmParamFetcherSpec extends Specification {
   def 'fetchParameters[trim,last_one,reverse-sort] should return expected result'() {
     given:
     def query = newBuilder()
-        .lastOneWins(true)
+        .useLast(true)
         .trimValues(true)
         .reverseSort(true)
         .build()
@@ -138,7 +138,7 @@ class AwsSsmParamFetcherSpec extends Specification {
   def 'fetchParameters[trim,last_one,reverse-sort] should return expected result'() {
     given:
     def query = newBuilder()
-        .lastOneWins(true)
+        .useLast(true)
         .trimValues(true)
         .reverseSort(true)
         .uppercase(true)

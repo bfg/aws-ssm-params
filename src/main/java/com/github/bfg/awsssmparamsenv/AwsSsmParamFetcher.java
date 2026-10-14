@@ -36,7 +36,7 @@ public final class AwsSsmParamFetcher implements Closeable {
       paramStream = paramStream.sorted(comparator);
     }
 
-    BinaryOperator<String> mergeFunc = (query.lastOneWins()) ?
+    BinaryOperator<String> mergeFunc = (query.useLast()) ?
         (a, b) -> b
         :
         (a, b) -> a;
