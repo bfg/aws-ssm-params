@@ -33,6 +33,14 @@ add_parameter /test/shell-injection/f    "'x\" "
 add_parameter /test/shell-injection/g    "\"'x "
 add_parameter /test/shell-injection/h    '$HOME '
 add_parameter /test/shell-injection/i    'eval x=$((1 + 1)) '
+add_parameter /test/shell-injection/j    ' {"app":"trololo-app","name":"trololo-app","type":"Load Balanced Web Service "} '
+add_parameter /test/shell-injection/k    "foo\n  bar"
+add_parameter /test/shell-injection/l    "foo\n\t \n \t bar"
+add_parameter /test/shell-injection/m    '`ls /etc` '
+add_parameter /test/shell-injection/n    '$(ls /etc) '
+add_parameter /test/shell-injection/o    'my_super_function '
+
+add_parameter /test2/json-values/a         ' {"app":"trololo-app","name":"trololo-app","type":"Load Balanced Web Service "} '
 
 # vim:shiftwidth=2 softtabstop=2 expandtab
 # EOF

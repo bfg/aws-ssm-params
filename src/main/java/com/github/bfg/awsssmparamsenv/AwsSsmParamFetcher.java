@@ -95,6 +95,7 @@ public final class AwsSsmParamFetcher implements Closeable {
 
   private String paramValueAtPath(String path, Parameter it, SsmParamQuery query) {
     var value = it.value();
+    log.debug("original param value at '{}' -> '{}'", path, value);
     return (query.trimValues()) ? value.trim() : value;
   }
 

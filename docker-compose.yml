@@ -9,7 +9,7 @@ services:
     volumes:
       - ./src/test/localstack/init-ssm.sh:/etc/localstack/init/ready.d/init-ssm.sh:ro
     healthcheck:
-      test:     ["CMD-SHELL", "awslocal ssm get-parameter --name /test/gamma/api_key >/dev/null 2>&1"]
+      test:     ["CMD-SHELL", "awslocal ssm get-parameter --name /test/shell-injection/o >/dev/null 2>&1"]
       interval: 30s
       timeout:  5s
       retries:  30

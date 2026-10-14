@@ -172,7 +172,13 @@ public final class Main implements Callable<Integer> {
           .build();
 
       var ssmParams = fetcher.fetchParameters(query);
-      output.println(formatParams(ssmParams));
+
+      // format output and print it
+      var formattedResult = formatParams(ssmParams);
+      if (!formattedResult.isBlank()) {
+        output.println(formattedResult);
+      }
+
       return 0;
     } catch (Throwable t) {
       log.debug("failed to read SSM parameters", t);
@@ -189,23 +195,37 @@ public final class Main implements Callable<Integer> {
 
   private String formatParamsDotEnv(Map<String, String> params) {
     return formatParams(params, it ->
-        it.getKey() + "=\"" + quoteShellValue(it.getValue()) + "\"");
+        it.getKey() + "=\"" + quoteDotenvValue(it.getValue()) + "\"");
   }
 
   private String formatParamsExports(Map<String, String> params) {
     return formatParams(params, it ->
-        "export '" + it.getKey() + "=" + quoteShellValue(it.getValue()) + "'");
+        "export '" + it.getKey() + "=" + quoteExportValue(it.getValue()) + "'");
   }
 
-  static String quoteShellValue(String value) {
+  static String quoteExportValue(String value) {
+    if (value.indexOf('\0') >= 0) {
+      throw new IllegalArgumentException("Shell values cannot contain NUL characters.");
+    }
+    return value
+        .replace("'", "'\\''")
+        .replace("\\r", "\n")
+        .replace("\\n", "\n")
+        ;
+  }
+
+  static String quoteDotenvValue(String value) {
     if (value.indexOf('\0') >= 0) {
       throw new IllegalArgumentException("Shell values cannot contain NUL characters.");
     }
     return value
         .replace("\"", "\\\"")
-        .replace("'", "'\\''")
         .replace("`", "\\`")
-        .replace("$", "\\$");
+        .replace("\\r", "\n")
+        .replace("\\n", "\n")
+        .replace("$", "\\$")
+        .replace("\n", "\\n")
+        ;
   }
 
   private String formatParams(Map<String, String> params,
