@@ -176,9 +176,15 @@ graalvmNative {
             if (osdetector.os == 'linux') {
                 // static musl binaries are supported **only** on x86_64
                 // SEE: https://github.com/oracle/graal/issues/10018#issuecomment-2456872046
-                if (envBool('STATIC_BINARY') && osdetector.arch in ['x86_64']) {
+                if (envBool('STATIC_BINARY')) {
+                  if (osdetector.arch in ['x86_64']) {
+                    // amd64?
                     buildArgs.add('--static')
                     buildArgs.add('--libc=musl')
+                  } else if (osdetector.arch in ['aarch64']) {
+                    // arm64?
+                    buildArgs.add('--static-nolibc')
+                  }
                 }
 
                 // NOTE: the G1 garbage collector ('--gc=G1') is currently only supported on AMD64 and AArch64.
