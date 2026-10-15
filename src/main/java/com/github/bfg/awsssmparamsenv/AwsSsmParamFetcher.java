@@ -63,8 +63,9 @@ public final class AwsSsmParamFetcher implements Closeable {
           .nextToken(nextToken)
           .withDecryption(true);
 
+      log.trace("[#{} {}] fetching parameters", attempt, path);
       var params = ssmClient.getParametersByPath(reqBuilder.build());
-      log.trace("[#{} {}] retrieved {} parameters", attempt, path, params.parameters().size());
+      log.debug("[#{} {}] retrieved {} parameter(s)", attempt, path, params.parameters().size());
       nextToken = params.nextToken();
 
       params.parameters().forEach(it -> {
@@ -95,7 +96,7 @@ public final class AwsSsmParamFetcher implements Closeable {
 
   private String paramValueAtPath(String path, Parameter it, SsmParamQuery query) {
     var value = it.value();
-    log.debug("original param value at '{}' -> '{}'", path, value);
+    log.debug("param value at '{}' -> '{}'", it.name(), value);
     return (query.trimValues()) ? value.trim() : value;
   }
 
