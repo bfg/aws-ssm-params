@@ -3,197 +3,215 @@
 //
 
 buildscript {
-    ext {
-    lombokVer           = "1.18.48"
-    picocliVer          = "4.7.7"
-    aws2SdkVer          = "2.55.12"
-    slfj4jVer           = "2.0.20"
-    logbackVer          = "1.6.5"
-    }
+  ext {
+    lombokVer = "1.18.48"
+    picocliVer = "4.7.7"
+    aws2SdkVer = "2.55.12"
+    slfj4jVer = "2.0.20"
+    logbackVer = "1.6.5"
+  }
 }
 
 plugins {
-    id 'application'
-    id 'groovy'
-    id 'jacoco'
-    id 'org.graalvm.buildtools.native'          version '1.1.14'
-    id "com.gradleup.shadow"                    version "9.6.1"
-    id "com.google.osdetector"                  version "1.7.3"
-    id 'com.gorylenko.gradle-git-properties'    version '4.0.1'
-    id 'com.adarshr.test-logger'                version '4.0.0'
-    id 'net.researchgate.release'               version '3.1.0'
+  id 'application'
+  id 'groovy'
+  id 'jacoco'
+  id 'org.graalvm.buildtools.native' version '1.1.14'
+  id "com.gradleup.shadow" version "9.6.1"
+  id "com.google.osdetector" version "1.7.3"
+  id 'com.gorylenko.gradle-git-properties' version '4.0.1'
+  id 'com.adarshr.test-logger' version '4.0.0'
+  id 'net.researchgate.release' version '3.1.0'
 }
 
 // import common utils
 apply from: "gradle/utils.gradle"
 
 repositories {
-    mavenCentral()
+  mavenCentral()
 }
 
 dependencies {
-    compileOnly             "org.projectlombok:lombok:${lombokVer}"
-    annotationProcessor     "org.projectlombok:lombok:${lombokVer}"
+  compileOnly "org.projectlombok:lombok:${lombokVer}"
+  annotationProcessor "org.projectlombok:lombok:${lombokVer}"
 
-    implementation          "info.picocli:picocli:${picocliVer}"
-    annotationProcessor     "info.picocli:picocli-codegen:${picocliVer}"
+  implementation "info.picocli:picocli:${picocliVer}"
+  annotationProcessor "info.picocli:picocli-codegen:${picocliVer}"
 
-    implementation          "org.slf4j:slf4j-api:${slfj4jVer}"
-    implementation          "ch.qos.logback:logback-classic:${logbackVer}"
+  implementation "org.slf4j:slf4j-api:${slfj4jVer}"
+  implementation "ch.qos.logback:logback-classic:${logbackVer}"
 
-    implementation          "software.amazon.awssdk:ssm:${aws2SdkVer}"
+  implementation "software.amazon.awssdk:ssm:${aws2SdkVer}"
 
-    testImplementation      "org.spockframework:spock-core:2.5-groovy-6.0"
-    testImplementation      "com.google.code.gson:gson:2.14.0"
-    testRuntimeOnly         "org.junit.platform:junit-platform-launcher:1.14.4"
+  testImplementation "org.spockframework:spock-core:2.5-groovy-6.0"
+  testImplementation "com.google.code.gson:gson:2.14.0"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.14.4"
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+  useJUnitPlatform()
 }
 
 application {
-    mainClass = 'com.github.bfg.awsssmparamsenv.Main'
+  mainClass = 'com.github.bfg.awsssmparamsenv.Main'
+}
+
+// gradlew run settings
+run {
+  // to prevent warnings like:
+  //
+  // WARNING: A restricted method in java.lang.System has been called
+  // WARNING: java.lang.System::load has been called by org.fusesource.jansi.internal.JansiLoader in an unnamed module
+  // WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+  // WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+  jvmArgs += ['--enable-native-access=ALL-UNNAMED']
 }
 
 // BEGIN: testing
 test {
-    // tests require more memory
-    maxHeapSize = "2G"
+  // tests require more memory
+  maxHeapSize = "2G"
 
-    jvmArgs += [
-            // Disable the following JVM warning while running tests
-            //
-            // WARNING: A restricted method in java.lang.System has been called
-            // WARNING: java.lang.System::loadLibrary has been called by io.netty.util.internal.NativeLibraryUtil
-            '--enable-native-access=ALL-UNNAMED'
-    ]
+  jvmArgs += [
+      // Disable the following JVM warning while running tests
+      //
+      // WARNING: A restricted method in java.lang.System has been called
+      // WARNING: java.lang.System::loadLibrary has been called by io.netty.util.internal.NativeLibraryUtil
+      '--enable-native-access=ALL-UNNAMED'
+  ]
 
-    finalizedBy jacocoTestReport // report is always generated after tests run
+  finalizedBy jacocoTestReport // report is always generated after tests run
 }
 
 // BEGIN: jacoco code coverage
 jacoco {
-    toolVersion = "0.8.14"
+  toolVersion = "0.8.14"
 }
 
 jacocoTestReport {
-    dependsOn test // tests are required to run before generating the report
-    reports {
-        xml.required = true
-        csv.required = false
-        html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
-    }
+  dependsOn test // tests are required to run before generating the report
+  reports {
+    xml.required = true
+    csv.required = false
+    html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+  }
 }
 // END:   jacoco code coverage
 
 testlogger {
-    theme         = 'mocha'
-    slowThreshold = 2000
+  theme = 'mocha'
+  slowThreshold = 2000
 }
 // END: testing
 
 gitProperties {
-    dateFormat = "yyyy-MM-dd'T'HH:mm:SS'Z'"
-    dateFormatTimeZone = "UTC"
+  dateFormat = "yyyy-MM-dd'T'HH:mm:SS'Z'"
+  dateFormatTimeZone = "UTC"
 
-    // if branch can't be determined, e.g. in detached HEAD state,
-    // use GITHUB_REF_NAME env variable - it should contain branch/tag name
-    // SEE: https://docs.github.com/en/actions/reference/workflows-and-actions/variables
-    branch =  System.env['GITHUB_HEAD_REF']
+  // if branch can't be determined, e.g. in detached HEAD state,
+  // use GITHUB_REF_NAME env variable - it should contain branch/tag name
+  // SEE: https://docs.github.com/en/actions/reference/workflows-and-actions/variables
+  branch = System.env['GITHUB_HEAD_REF']
 
-    keys = [
-            'git.branch',
-            'git.build.version',
-            'git.commit.id',
-            'git.commit.id.abbrev',
-            'git.commit.id.describe',
-            'git.commit.time',
-            'git.remote.origin.url',
-    ]
-    extProperty = 'git'
+  keys = [
+      'git.branch',
+      'git.build.version',
+      'git.commit.id',
+      'git.commit.id.abbrev',
+      'git.commit.id.describe',
+      'git.commit.time',
+      'git.remote.origin.url',
+  ]
+  extProperty = 'git'
 }
 
 release {
-    tagTemplate     = 'v${version}'
+  tagTemplate = 'v${version}'
 
-    // there's no point rebuilding commits made by this plugin
-    newVersionCommitMessage = '[Gradle Release Plugin] [ci skip] - new version commit: '
+  // there's no point rebuilding commits made by this plugin
+  newVersionCommitMessage = '[Gradle Release Plugin] [ci skip] - new version commit: '
 
-    git {
-        // release can be made on any branch
-        requireBranch.set("")
-    }
+  git {
+    // release can be made on any branch
+    requireBranch.set("")
+  }
 }
 
-
 tasks.withType(JavaCompile).configureEach {
-    options.release = 25
+  options.release = 25
 }
 
 tasks.withType(Jar).configureEach {
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+  duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 // application/shadowJar plugins: disable creation of distribution archives
 distZip.enabled = distTar.enabled = false
 tasks.shadowJar {
-    // enable shadowJar task only if it's explicitly requested via cli by containing "shadowJar" in the task list
-    onlyIf {
-        gradle.startParameter.taskRequests.find {
-            it.args.find { it.contains("shadowJar") } != null
-        } != null
-    }
+  // enable shadowJar task only if it's explicitly requested via cli by containing "shadowJar" in the task list
+  onlyIf {
+    gradle.startParameter.taskRequests.find {
+      it.args.find { it.contains("shadowJar") } != null
+    } != null
+  }
 
-    mergeServiceFiles()
+  mergeServiceFiles()
 
-    // include
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+  // include
+  duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 graalvmNative {
-    toolchainDetection = true
-    binaries {
-        main {
-            fallback      = false
-            richOutput    = !envBool('CI')  // plain output on CI, rich on local dev
+  toolchainDetection = true
+  binaries {
+    main {
+      fallback = false
+      richOutput = !envBool('CI')  // plain output on CI, rich on local dev
 
-            // optimize for faster build time for dev builds and smaller binary for prod builds
-            if (envBool('PROD_BINARY')) {
-                buildArgs.add("-Os")
-            } else {
-                buildArgs.add("-Ob")
-            }
+      // to prevent warnings like:
+      //
+      // WARNING: A restricted method in java.lang.System has been called
+      // WARNING: java.lang.System::load has been called by org.fusesource.jansi.internal.JansiLoader in an unnamed module
+      // WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+      // WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+      buildArgs.add('--enable-native-access=ALL-UNNAMED')
 
-            // NOTE: AWS EC2 instance metadata doesn't work without this due to usage of java urlconnection
-            buildArgs.add("--enable-url-protocols=http,https")
+      // optimize for faster build time for dev builds and smaller binary for prod builds
+      if (envBool('PROD_BINARY')) {
+        buildArgs.add("-Os")
+      } else {
+        buildArgs.add("-Ob")
+      }
 
-            if (!envBool('CI')) {
-                buildArgs.addAll('--emit', 'build-report')
-            }
+      // NOTE: AWS EC2 instance metadata doesn't work without this due to usage of java urlconnection
+      buildArgs.add("--enable-url-protocols=http,https")
 
-            // linux specifics/optimizations
-            if (osdetector.os == 'linux') {
-                // static musl binaries are supported **only** on x86_64
-                // SEE: https://github.com/oracle/graal/issues/10018#issuecomment-2456872046
-                if (envBool('STATIC_BINARY')) {
-                  if (osdetector.arch in ['x86_64']) {
-                    // amd64?
-                    buildArgs.add('--static')
-                    buildArgs.add('--libc=musl')
-                  } else if (osdetector.arch in ['aarch64']) {
-                    // arm64?
-                    buildArgs.add('--static-nolibc')
-                  }
-                }
+      if (!envBool('CI')) {
+        buildArgs.addAll('--emit', 'build-report')
+      }
 
-                // NOTE: the G1 garbage collector ('--gc=G1') is currently only supported on AMD64 and AArch64.
-                //if (osdetector.arch in ['x86_64', 'aarch64']) {
-                //    buildArgs.add("--gc=G1")
-                //}
-            }
+      // linux specifics/optimizations
+      if (osdetector.os == 'linux') {
+        // static musl binaries are supported **only** on x86_64
+        // SEE: https://github.com/oracle/graal/issues/10018#issuecomment-2456872046
+        if (envBool('STATIC_BINARY')) {
+          if (osdetector.arch in ['x86_64']) {
+            // amd64?
+            buildArgs.add('--static')
+            buildArgs.add('--libc=musl')
+          } else if (osdetector.arch in ['aarch64']) {
+            // arm64?
+            buildArgs.add('--static-nolibc')
+          }
         }
+
+        // NOTE: the G1 garbage collector ('--gc=G1') is currently only supported on AMD64 and AArch64.
+        //if (osdetector.arch in ['x86_64', 'aarch64']) {
+        //    buildArgs.add("--gc=G1")
+        //}
+      }
     }
+  }
 }
 
 // vim:shiftwidth=2 softtabstop=2 expandtab

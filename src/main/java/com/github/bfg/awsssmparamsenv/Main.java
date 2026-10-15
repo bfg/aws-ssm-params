@@ -114,6 +114,9 @@ public final class Main implements Callable<Integer> {
   @Option(names = {"--full-version"}, description = "Display detailed application version")
   boolean fullVersion = false;
 
+  @Option(names = {"-v", "--verbose"}, description = "Verbose execution")
+  boolean verbose = false;
+
   @Parameters(paramLabel = "PATH",
       showDefaultValue = Visibility.ALWAYS,
       description = "One or more AWS SSM parameter store paths to fetch parameters from")
@@ -181,6 +184,10 @@ public final class Main implements Callable<Integer> {
     }
     maybeSetLogLevel(logLevel);
 
+    if (verbose) {
+      setLogLevel(getClass().getPackage().getName(), "DEBUG");
+    }
+
     try (var fetcher = new AwsSsmParamFetcher(createSsmClient())) {
       var query = SsmParamQuery.builder()
           .paths(paths)
@@ -192,8 +199,9 @@ public final class Main implements Callable<Integer> {
           .trimValues(trimValues)
           .build();
 
-
-      log.warn("created query {}", query);
+      if (verbose) {
+        log.debug("using query: {}", query);
+      }
 
       var ssmParams = fetcher.fetchParameters(query);
 
@@ -218,7 +226,9 @@ public final class Main implements Callable<Integer> {
     var shouldContain = Set.of(
         "java.runtime.version",
         "java.vm.name",
-        "java.vendor.version"
+        "java.vendor.version",
+        "os.name",
+        "os.arch"
     );
     var sysPropsStr = sysProps.keySet().stream()
         .map(Object::toString)
