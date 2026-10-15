@@ -63,14 +63,18 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  linux-binary:
+  # Builds a project, runs tests and builds a native binary
+  build-binary:
     strategy:
       matrix:
         runner: [ ubuntu-26.04, ubuntu-26.04-arm ]
+
     runs-on: ${{ matrix.runner }}
+
     outputs:
       CONTAINER_IMG_VERSION:  ${{ steps.define_outputs.outputs.CONTAINER_IMG_VERSION }}
       CONTAINER_IMG_TAG:      ${{ steps.define_outputs.outputs.CONTAINER_IMG_TAG }}
+
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
@@ -92,8 +96,8 @@ jobs:
           java-version:             25
           distribution:             graalvm-community
           check-for-updates:        false
-          native-image-musl:        true
-          #native-image-musl:        ${{ matrix.runner == 'ubuntu-26.04' }}
+          # NOTE: fully static linking requires musl libc, and this is supported only on linux/x86_64
+          native-image-musl:        ${{ runner.os == 'Linux' &&  runner.arch == 'X64' }}
           native-image-job-reports: true
           native-image-pr-reports:  false
           cache:                    gradle
@@ -117,6 +121,7 @@ jobs:
         if:   env.DEBUG_ENV == 'true' || contains(github.event.pull_request.labels.*.name, 'debug-env')
         run:  env | sort -k1
 
+      # NOTE: tests are being ran only on linux/x86_64 - no need to run tests on each platform
       - name: Run tests
         if:   env.SKIP_TESTS != 'true' && !contains(github.event.pull_request.labels.*.name, 'skip-tests') && runner.arch == 'X64'
         run: ./gradlew test
@@ -150,8 +155,9 @@ jobs:
           path:               build/native/nativeCompile/aws-ssm-params-env
           if-no-files-found:  error
 
+  # Builds a multi-platform container image
   container-image:
-    needs:  linux-binary
+    needs:  build-binary
     #if:     ${{ vars.BUILD_CONTAINER_IMAGE == 'true' && vars.CONTAINER_REPOSITORY != '' }}
     runs-on: ubuntu-26.04
 
@@ -201,8 +207,9 @@ jobs:
         if:   github.ref_type == 'tag' && !endsWith(env.CONTAINER_IMG_VERSION, '-snapshot')
         run:  docker buildx imagetools create --tag "${CONTAINER_IMG_TAG%:*}:latest" "$CONTAINER_IMG_TAG"
 
+  # Creates GitHub project release + uploads built binaries
   github-release:
-    needs: [ linux-binary, container-image ]
+    needs: [ build-binary, container-image ]
     if:    github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-26.04
     steps:
@@ -227,11 +234,12 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          generate_release_notes:   true
+          append_body:              true
+          fail_on_unmatched_files:  true
           files: |
             release/aws-ssm-params-env-linux-x86_64
             release/aws-ssm-params-env-linux-aarch64
-          fail_on_unmatched_files: true
 
 # vim:shiftwidth=2 softtabstop=2 expandtab
 # EOF
