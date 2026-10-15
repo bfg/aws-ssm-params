@@ -149,4 +149,4 @@ docker compose up -d --wait
 [dc]: https://docs.docker.com/compose/
 [dc-env]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#use-the-env_file-attribute
 [aws-env]: https://github.com/droplr/aws-env
-[proj-dockerhub]: https://hub.docker.com/repository/docker/gracnar/aws-ssm-params-env/general
+[proj-dockerhub]: https://hub.docker.com/r/gracnar/aws-ssm-params-env
