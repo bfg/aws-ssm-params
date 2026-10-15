@@ -67,7 +67,7 @@ jobs:
   build-binary:
     strategy:
       matrix:
-        runner: [ ubuntu-26.04, ubuntu-26.04-arm ]
+        runner: [ ubuntu-26.04, ubuntu-26.04-arm, macos-latest ]
 
     runs-on: ${{ matrix.runner }}
 
