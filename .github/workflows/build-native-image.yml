@@ -224,23 +224,22 @@ jobs:
     if:    github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-26.04
     steps:
-      - name: Download x86_64 binary from artifacts
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Download previously built artifacts
         uses: actions/download-artifact@v8
         with:
-          name: aws-ssm-params-env-linux-x86_64
-          path: release
+          pattern:        aws-ssm-params-env*
+          path:           built-artifacts
+          merge-multiple: false
 
-      - name: Move x86_64 binary for release
-        run: mv release/aws-ssm-params-env release/aws-ssm-params-env-linux-x86_64
+      - name: Prepare binaries for release upload
+        run:  ./scripts/prepare-binaries-for-release-upload.sh built-artifacts release-binaries
 
-      - name: Download aarch64 binary from artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: aws-ssm-params-env-linux-aarch64
-          path: release-arm64
-
-      - name: Move aarch64 binary for release
-        run: mv release-arm64/aws-ssm-params-env release/aws-ssm-params-env-linux-aarch64
+      - name: List release binaries
+        run: |
+          du -h release-binaries/* | sort -rnk1
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
@@ -249,8 +248,7 @@ jobs:
           append_body:              true
           fail_on_unmatched_files:  true
           files: |
-            release/aws-ssm-params-env-linux-x86_64
-            release/aws-ssm-params-env-linux-aarch64
+            release-binaries/aws-ssm-params-env-*
 
 # vim:shiftwidth=2 softtabstop=2 expandtab
 # EOF
