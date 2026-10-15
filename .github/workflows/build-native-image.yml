@@ -18,9 +18,17 @@
 name: build-native-image
 
 on:
+  # allow job to be run manually from GH Actions web UI
+  # SEE:
+  # - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch
+  # - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow
+  workflow_dispatch:
+
+  # on push
   push:
     # run when commit is pushed to main branch
-    branches: [ main ]
+    # NOTE: uncommenting this invokes two workflows for tagged commits
+    #branches: [ main ]
 
     # run when a tag is created
     tags:
