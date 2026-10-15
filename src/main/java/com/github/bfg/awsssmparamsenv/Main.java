@@ -218,7 +218,9 @@ public final class Main implements Callable<Integer> {
     var shouldContain = Set.of(
         "java.runtime.version",
         "java.vm.name",
-        "java.vendor.version"
+        "java.vendor.version",
+        "os.name",
+        "os.arch"
     );
     var sysPropsStr = sysProps.keySet().stream()
         .map(Object::toString)
