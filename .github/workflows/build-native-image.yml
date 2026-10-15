@@ -45,7 +45,7 @@ env:
   #   - vars.SKIP_TESTS is set
   #   - tests shall not run if skip-tests PR label is applied
   #   - tests shall run only on linux/x86_64
-  SKIP_TESTS:                   ${{ vars.SKIP_TESTS || (runner.os != 'Linux' || runner.arch == 'X64') || contains(github.event.pull_request.labels.*.name, 'skip-tests') || 'false' }}
+  SKIP_TESTS:                   ${{ vars.SKIP_TESTS || 'false' }}
 
   # build container image?
   BUILD_CONTAINER_IMAGE:        ${{ vars.BUILD_CONTAINER_IMAGE || 'true' }}
@@ -107,6 +107,13 @@ jobs:
           cache:                    gradle
           github-token:             ${{ secrets.GITHUB_TOKEN }}
 
+      # Disable running tests on unsupported platforms or when skip-tests PR label is applied
+      # NOTE: this can't be done in env: block, because runner and PR contexts are not available there
+      - name: Disable running tests unless running on a supported platform
+        if:   (runner.os != 'Linux' || runner.arch != 'X64') || contains(github.event.pull_request.labels.*.name, 'skip-tests')
+        run: |
+          echo SKIP_TESTS=true >> "$GITHUB_ENV"
+
       - name: Set env variables
         run: |
           echo "OS="$(uname -s | tr '[:upper:]' '[:lower:]') >> "$GITHUB_ENV"
@@ -166,8 +173,8 @@ jobs:
     runs-on: ubuntu-26.04
 
     env:
-      CONTAINER_IMG_VERSION:  ${{ needs.linux-binary.outputs.CONTAINER_IMG_VERSION }}
-      CONTAINER_IMG_TAG:      ${{ needs.linux-binary.outputs.CONTAINER_IMG_TAG }}
+      CONTAINER_IMG_VERSION:  ${{ needs.build-binary.outputs.CONTAINER_IMG_VERSION }}
+      CONTAINER_IMG_TAG:      ${{ needs.build-binary.outputs.CONTAINER_IMG_TAG }}
 
     steps:
       - name: Checkout sources
