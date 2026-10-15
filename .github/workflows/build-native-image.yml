@@ -1,3 +1,20 @@
+#
+# Github Actions workflow
+#
+# SYNTAX: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+#
+# IMPORTANT SETTINGS:
+# * GH Actions expressions: https://docs.github.com/en/actions/reference/workflows-and-actions/expressions
+# * GH Actions contexts:    https://docs.github.com/en/actions/reference/workflows-and-actions/contexts
+# * GH Actions variables:   https://docs.github.com/en/actions/reference/workflows-and-actions/variables
+# * GH hosted runners:      https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#choosing-github-hosted-runners
+#
+# MISC:
+# * https://github.com/marketplace?type=actions
+# * https://stackoverflow.com/a/73061524
+# * https://runs-on.com/benchmarks/github-actions-cpu-performance/
+#
+
 name: build-native-image
 
 on:
@@ -189,20 +206,31 @@ jobs:
     if:    github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-26.04
     steps:
-      - name: Download binary from artifacts
+      - name: Download x86_64 binary from artifacts
         uses: actions/download-artifact@v8
         with:
           name: aws-ssm-params-env-linux-x86_64
           path: release
 
-      - name: Name binary for release
+      - name: Move x86_64 binary for release
         run: mv release/aws-ssm-params-env release/aws-ssm-params-env-linux-x86_64
+
+      - name: Download aarch64 binary from artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: aws-ssm-params-env-linux-aarch64
+          path: release-arm64
+
+      - name: Move aarch64 binary for release
+        run: mv release-arm64/aws-ssm-params-env release/aws-ssm-params-env-linux-aarch64
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
-          files: release/aws-ssm-params-env-linux-x86_64
+          files: |
+            release/aws-ssm-params-env-linux-x86_64
+            release/aws-ssm-params-env-linux-aarch64
           fail_on_unmatched_files: true
 
 # vim:shiftwidth=2 softtabstop=2 expandtab
