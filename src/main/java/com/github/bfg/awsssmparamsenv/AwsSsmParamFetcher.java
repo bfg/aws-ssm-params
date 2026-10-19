@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import software.amazon.awssdk.services.ssm.SsmClient;
-import software.amazon.awssdk.services.ssm.model.GetParametersByPathRequest;
 import software.amazon.awssdk.services.ssm.model.Parameter;
 
 import java.io.Closeable;
@@ -12,14 +11,12 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
 public final class AwsSsmParamFetcher implements Closeable {
   private final SsmClient ssmClient;
-
 
   public Map<String, String> fetchParameters(SsmParamQuery query) {
     val sanitizedPaths = sanitizeParameterPaths(query.paths());
@@ -36,46 +33,31 @@ public final class AwsSsmParamFetcher implements Closeable {
       paramStream = paramStream.sorted(comparator);
     }
 
-    BinaryOperator<String> mergeFunc = (query.useLast()) ?
-        (a, b) -> b
-        :
-        (a, b) -> a;
-
     val result = paramStream.collect(
-        Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, mergeFunc, LinkedHashMap::new));
+        Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+            Utils.mergeFunction(query.useLast()), LinkedHashMap::new));
 
     log.debug("fetched {} AWS SSM parameters: {}", result.size(), result.keySet());
     return result;
   }
 
   private Map<String, String> fetchParameters(String path, SsmParamQuery query) {
-    var result = new LinkedHashMap<String, String>();
+    val result = ssmClient.getParametersByPathPaginator(it ->
+            it.path(path)
+                .recursive(query.recursive())
+                .maxResults(10)
+                .withDecryption(true))
+        .stream()
+        .flatMap(it -> it.parameters().stream())
+        .filter(it -> !paramNameAtPath(path, it, query).isBlank())
+        .collect(Collectors.toMap(
+            it -> paramNameAtPath(path, it, query),
+            it -> paramValueAtPath(path, it, query),
+            Utils.mergeFunction(query.useLast()),
+            LinkedHashMap::new
+        ));
 
-    log.debug("fetching parameters for path: {}", path);
-    String nextToken = null;
-    var attempt = 0;
-    do {
-      attempt++;
-      var reqBuilder = GetParametersByPathRequest.builder()
-          .path(path)
-          .recursive(query.recursive())
-          .maxResults(10)
-          .nextToken(nextToken)
-          .withDecryption(true);
-
-      log.trace("[#{} {}] fetching parameters", attempt, path);
-      var params = ssmClient.getParametersByPath(reqBuilder.build());
-      log.debug("[#{} {}] retrieved {} parameter(s)", attempt, path, params.parameters().size());
-      nextToken = params.nextToken();
-
-      params.parameters().forEach(it -> {
-        var name = paramNameAtPath(path, it, query);
-        if (name.isEmpty()) return;
-        result.put(name, paramValueAtPath(path, it, query));
-      });
-    } while (nextToken != null);
-
-    log.debug("[{}] retrieved {} parameters in {} attempts", path, result.size(), attempt);
+    log.debug("[{}] retrieved {} parameters", path, result.size());
     return result;
   }
 

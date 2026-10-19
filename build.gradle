@@ -53,7 +53,7 @@ tasks.named('test') {
 }
 
 application {
-  mainClass = 'com.github.bfg.awsssmparamsenv.Main'
+  mainClass = 'com.github.bfg.awsssmparamsenv.CmdRunner'
 }
 
 // gradlew run settings
@@ -141,10 +141,6 @@ tasks.withType(JavaCompile).configureEach {
   options.release = 25
 }
 
-tasks.withType(Jar).configureEach {
-  duplicatesStrategy = DuplicatesStrategy.INCLUDE
-}
-
 // application/shadowJar plugins: disable creation of distribution archives
 distZip.enabled = distTar.enabled = false
 tasks.shadowJar {
@@ -155,10 +151,8 @@ tasks.shadowJar {
     } != null
   }
 
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
   mergeServiceFiles()
-
-  // include
-  duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 graalvmNative {
