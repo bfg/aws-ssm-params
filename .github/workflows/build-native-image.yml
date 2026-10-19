@@ -170,8 +170,8 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name:               aws-ssm-params-env-${{ env.OS }}-${{ env.ARCH }}
-          path:               build/native/nativeCompile/aws-ssm-params-env
+          name:               aws-ssm-params-${{ env.OS }}-${{ env.ARCH }}
+          path:               build/native/nativeCompile/aws-ssm-params
           if-no-files-found:  error
 
   # Builds a multi-platform container image
@@ -191,13 +191,13 @@ jobs:
       - name: Download x86_64 binary from artifacts
         uses: actions/download-artifact@v8
         with:
-          name: aws-ssm-params-env-linux-x86_64
+          name: aws-ssm-params-linux-x86_64
           path: docker/amd64
 
       - name: Download aarch64 binary from artifacts
         uses: actions/download-artifact@v8
         with:
-          name: aws-ssm-params-env-linux-aarch64
+          name: aws-ssm-params-linux-aarch64
           path: docker/arm64
 
       - name: Display environment variables
@@ -238,7 +238,7 @@ jobs:
       - name: Download previously built artifacts
         uses: actions/download-artifact@v8
         with:
-          pattern:        aws-ssm-params-env*
+          pattern:        aws-ssm-params*
           path:           built-artifacts
           merge-multiple: false
 

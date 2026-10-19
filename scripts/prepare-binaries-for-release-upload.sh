@@ -2,7 +2,7 @@
 
 artifacts_dir=${1:-"built-artifacts"}
 release_dir=${2:-"release-binaries"}
-tool="aws-ssm-params-env"
+tool="aws-ssm-param"
 
 set -e
 
