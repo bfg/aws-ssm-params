@@ -1,11 +1,13 @@
-# aws-ssm-params-env - a secure way to expose AWS SSM Parameter Store parameters as environment variables
+# aws-ssm-params - a secure way to expose AWS SSM Parameter Store parameters as environment variables
 
-`aws-ssm-params-env` is a small CLI tool that securely exposes parameters and secrets stored in one or more
+`aws-ssm-params` is a small CLI tool that securely exposes parameters and secrets stored in one or more
 [AWS Systems Manager Parameter Store][aws-ssm-param-store] paths (recursion supported) and outputs them in
 a format that can be used by shell to export environment variables before starting a real
 application or to construct [docker compose .env][dc-env].
 
-This project was inspired by [aws-env].
+This project was inspired by:
+- [aws-env] - original tool for exporting AWS SSM parameters as environment variables
+- [ssmtui] - great terminal GUI for browsing AWS SSM parameter store
 
 # Features
 
@@ -14,6 +16,7 @@ This project was inspired by [aws-env].
 - ability to handle parameter store values containing special characters and shell escapes
 - support for all AWS SSM parameter types (including `SecureString`)
 - docker image for easy inclusion into your app's container image
+- parameter listing
 
 # Usage
 
@@ -21,33 +24,33 @@ You can use this tool in many ways:
 
 - as part of docker `ENTRYPOINT` script to populate environment variables before starting actual application
 ```
-eval $(aws-ssm-params-env)
+eval $(aws-ssm-params)
 ```
 - to display AWS SSM parameters in a terse way
 ```
-aws-ssm-params-env -r /dev/common /dev/my-app
+aws-ssm-params -r /dev/common /dev/my-app
 ```
 - to import aws ssm parameter store parameters into current shell
 ```
-eval $(aws-ssm-params-env -r /dev/common /dev/my-app)
+eval $(aws-ssm-params -r /dev/common /dev/my-app)
 ```
 - to generate [.env][dc-env] file for your [docker compose][dc] development setup.
 ```
-aws-ssm-params-env -r /dev/common /dev/my-app -f dotenv > .env.local
+aws-ssm-params -r /dev/common /dev/my-app -f dotenv > .env.local
 ```
 
 ## Docker
 
-This project also publishes container image `gracnar/aws-ssm-params-env` on [Docker Hub][proj-dockerhub]
+This project also publishes container image `gracnar/aws-ssm-params` on [Docker Hub][proj-dockerhub]
 
 ```Dockerfile
-FROM gracnar/aws-ssm-params-env:<version> AS aspe
+FROM gracnar/aws-ssm-params:<version> AS asp
 
 FROM your-base-img
 
-# copy aws-ssm-params-env
-COPY    --from=aspe     /usr/local/bin/aws-ssm-params-env /usr/local/bin
-# aws-ssm-params-env now it can be used as part of a entrypoint script
+# copy aws-ssm-params
+COPY    --from=asp     /usr/local/bin/aws-ssm-params /usr/local/bin
+# aws-ssm-params now it can be used as part of a entrypoint script
 ```
 
 ## CLI
@@ -185,5 +188,7 @@ docker compose up -d --wait
 [dc-env]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#use-the-env_file-attribute
 [dc-envfile]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#use-the-env_file-attribute
 [glob]: https://man7.org/linux/man-pages/man7/glob.7.html
+[localstack]: https://github.com/localstack/localstack
 [aws-env]: https://github.com/droplr/aws-env
-[proj-dockerhub]: https://hub.docker.com/r/gracnar/aws-ssm-params-env
+[ssmtui]: https://github.com/suraj16thjan/ssmtui
+[proj-dockerhub]: https://hub.docker.com/r/gracnar/aws-ssm-params

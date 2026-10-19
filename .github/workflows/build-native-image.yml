@@ -256,7 +256,7 @@ jobs:
           append_body:              true
           fail_on_unmatched_files:  true
           files: |
-            release-binaries/aws-ssm-params-env-*
+            release-binaries/aws-ssm-params*
 
 # vim:shiftwidth=2 softtabstop=2 expandtab
 # EOF
