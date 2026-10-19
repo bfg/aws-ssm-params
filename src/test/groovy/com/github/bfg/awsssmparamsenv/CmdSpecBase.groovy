@@ -1,6 +1,8 @@
 package com.github.bfg.awsssmparamsenv
 
 import groovy.util.logging.Slf4j
+import org.junit.platform.commons.logging.LoggerFactory
+import org.slf4j.Logger
 import spock.lang.Specification
 
 import java.nio.charset.StandardCharsets
@@ -8,8 +10,8 @@ import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
-@Slf4j
 abstract class CmdSpecBase extends Specification {
+  Logger log = org.slf4j.LoggerFactory.getLogger(getClass())
   BufPrintStream stdout = BufPrintStream.create("stdout")
   BufPrintStream stderr = BufPrintStream.create("stderr")
 

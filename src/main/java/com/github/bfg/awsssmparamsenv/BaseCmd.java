@@ -3,6 +3,7 @@ package com.github.bfg.awsssmparamsenv;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Visibility;
 import picocli.CommandLine.Option;
@@ -49,6 +50,9 @@ abstract class BaseCmd implements Callable<Integer> {
   @Option(names = {"--full-version"}, description = "Display detailed application version")
   boolean fullVersion = false;
 
+  @CommandLine.ParentCommand
+  CmdRunner parentCmd;
+
   // stdio streams
   protected final InputStream stdin;
   protected final PrintStream stdout;
@@ -76,7 +80,12 @@ abstract class BaseCmd implements Callable<Integer> {
   }
 
   protected void beforeCall() {
-
+    if (endpoint.isEmpty() && !parentCmd.endpoint.isEmpty()) {
+      endpoint = parentCmd.endpoint;
+    }
+    if (region.isEmpty() && !parentCmd.region.isEmpty()) {
+      region = parentCmd.region;
+    }
   }
 
   /**

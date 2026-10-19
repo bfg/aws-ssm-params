@@ -44,6 +44,7 @@ public final class CmdRunner extends BaseCmd {
   static int runMain(String... args) {
     return new CommandLine(new CmdRunner(_stdin, _stdout, _stderr))
         .addSubcommand(new EnvCmd(_stdin, _stdout, _stderr))
+        .addSubcommand(new ListCmd(_stdin, _stdout, _stderr))
         .setOut(new PrintWriter(_stdout, true))
         .setErr(new PrintWriter(_stderr, true))
         .execute(args);
@@ -59,14 +60,6 @@ public final class CmdRunner extends BaseCmd {
 
     log.debug("will invoke default sub-command: {} with arguments: {}",
         defaultCmd.getCommandName(), unknownCliArgs);
-
-    // extract default command object instance and copy default parameter values
-    val envCmd = (BaseCmd) defaultCmd.getCommand();
-    envCmd.endpoint = this.endpoint;
-    envCmd.region = this.region;
-    envCmd.verbose = this.verbose;
-    envCmd.logLevel = this.logLevel;
-    envCmd.fullVersion = this.fullVersion;
 
     // invoke default picocli command
     return defaultCmd.execute(unknownCliArgs.toArray(new String[0]));
