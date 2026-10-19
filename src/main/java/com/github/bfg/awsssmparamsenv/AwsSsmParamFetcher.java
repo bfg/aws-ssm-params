@@ -7,10 +7,9 @@ import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.Parameter;
 
 import java.io.Closeable;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -90,6 +89,54 @@ public final class AwsSsmParamFetcher implements Closeable {
         .map(it -> it.startsWith("/") ? it : "/" + it)
         .distinct()
         .toList();
+  }
+
+  /**
+   * Fetches parameters at a given paths with glob(3) support.
+   *
+   * @param query query
+   * @return list of fetched parameters
+   */
+  public List<Parameter> listParameters(SsmParamQuery query) {
+    var paramStream = sanitizeParameterPaths(query.paths()).stream()
+        .flatMap(it -> listParameters(it, query).stream());
+
+    val result = paramStream.toList();
+    log.debug("retrieved {} parameters in total", result.size());
+    return result;
+  }
+
+  private List<Parameter> listParameters(String path, SsmParamQuery query) {
+    val basename = Utils.basename(path);
+
+    val containsGlob = Utils.containsGlobSymbols(basename);
+    val rootPath = (containsGlob) ? Utils.dirname(path) : path;
+
+    var paramStream = ssmClient.getParametersByPathPaginator(it -> it
+            .path(rootPath)
+            .recursive(query.recursive())
+            .withDecryption(true)
+            .maxResults(10))
+        .stream()
+        .flatMap(it -> it.parameters().stream());
+
+    if (containsGlob) {
+      val globMatcher = FileSystems.getDefault().getPathMatcher("glob:" + basename);
+      paramStream = paramStream.filter(it -> {
+        val paramBasename = Path.of(Utils.basename(it.name()));
+        return globMatcher.matches(paramBasename);
+      });
+    }
+
+    if (query.sort() || query.reverseSort()) {
+      var comparator = Comparator.comparing(Parameter::name);
+      if (query.reverseSort()) comparator = comparator.reversed();
+      paramStream = paramStream.sorted(comparator);
+    }
+
+    val result = paramStream.toList();
+    log.debug("[{}] retrieved {} parameters", path, result.size());
+    return result;
   }
 
   @Override

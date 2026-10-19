@@ -6,7 +6,6 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
-import picocli.CommandLine.ParentCommand;
 
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -17,7 +16,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Command(name = EnvCmd.CMD_NAME,
-    description = "Fetches and outputs AWS SSM parameters for shell evaluation",
+    description = "Fetches and outputs AWS SSM parameters for shell evaluation [default command]",
     sortOptions = false,
     footerHeading = "%n%n",
     footer = {
@@ -97,22 +96,8 @@ public class EnvCmd extends BaseCmd {
       description = "One or more AWS SSM parameter store paths to fetch parameters from")
   List<String> paths = Env.asStringList("SSM_PATHS");
 
-  @ParentCommand
-  CmdRunner parentCmd;
-
   public EnvCmd(InputStream stdin, PrintStream stdout, PrintStream stderr) {
     super(stdin, stdout, stderr);
-  }
-
-  @Override
-  protected void beforeCall() {
-    if (endpoint.isEmpty() && !parentCmd.endpoint.isEmpty()) {
-      endpoint = parentCmd.endpoint;
-    }
-    if (region.isEmpty() && !parentCmd.region.isEmpty()) {
-      region = parentCmd.region;
-    }
-    super.beforeCall();
   }
 
   @Override

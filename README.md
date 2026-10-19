@@ -52,16 +52,36 @@ COPY    --from=aspe     /usr/local/bin/aws-ssm-params-env /usr/local/bin
 
 ## CLI
 
-The AWS SDK uses its standard credential and region configuration, such as `AWS_PROFILE` and `AWS_REGION`.
+This tool picks up standard AWS SDK l and region configuration, such as `AWS_PROFILE` and `AWS_REGION`; you can
+also set `AWS_ENDPOINT` environment variable to point the tool to some unofficial AWS SSM endpoint
+(`http://localhost:4566/` for [localstack] SSM parameter store instance).
+
+### env
+
+Fetches AWS SSM parameters from given paths and formats them in a way that is consumable by:
+
+- shell (`-f exports`)
+- [docker compose envfile][dc-envfile] (`-f dotenv)
+
+**NOTE**: This is a default sub-command, it gets invoked also if the command `env` is not specified
 
 ```
-Usage: aws-ssm-params-env [-hlrRstuV] [--full-version] [--endpoint=<endpoint>] [-f=<outputFormat>] [-L=<logLevel>]
+Usage: aws-ssm-params env [-hlrRstuvV] [--full-version] [--endpoint=<endpoint>] [-f=<outputFormat>] [-L=<logLevel>]
                           [--region=<region>] [PATH...]
-
-Exports parameters from AWS SSM parameter store to environment variables or envfile.
-
+Fetches and outputs AWS SSM parameters for shell evaluation [default command]
       [PATH...]           One or more AWS SSM parameter store paths to fetch parameters from
                             Default: []
+
+OPTIONS:
+      --endpoint=<endpoint>
+                          AWS endpoint (optional, useful for testing)
+                            Default:
+      --region=<region>   AWS region (optional, useful for testing)
+                            Default:
+  -v, --verbose           Verbose execution
+  -L, --log-level=<logLevel>
+                          Logger level (off/warn/info/debug/trace)
+      --full-version      Display detailed application version
   -r, --[no-]recursive    Recursively fetch parameters from sub-paths
                             Default: false
   -s, --[no-]sort         Sort fetched parameters by name in output?
@@ -70,7 +90,7 @@ Exports parameters from AWS SSM parameter store to environment variables or envf
                             Default: false
   -l, --[no-]use-last     Use last parameter with distinct name instead of the first one? Useful when same parameter
                             name is contained in multiple paths
-                            Default: false
+                            Default: true
   -u, --[no-]uppercase    Uppercase parameter names?
                             Default: true
   -t, --[no-]trim         Trim fetched AWS SSM parameter values?
@@ -78,19 +98,11 @@ Exports parameters from AWS SSM parameter store to environment variables or envf
   -f, -F, --format=<outputFormat>
                           Output format (possible values: exports, dotenv)
                             Default: exports
-      --endpoint=<endpoint>
-                          AWS endpoint (optional, useful for testing)
-                            Default:
-      --region=<region>   AWS region (optional, useful for testing)
-                            Default:
-  -L, --log-level=<logLevel>
-                          Logger level (off/warn/info/debug/trace)
-      --full-version      Display detailed application version
   -h, --help              Show this help message and exit.
   -V, --version           Print version information and exit.
 
 
-ENVIRONMENT VARIABLES
+ENVIRONMENT VARIABLES:
 
 The behaviour of this tool can be altered by setting the following environment variables:
 
@@ -108,18 +120,41 @@ EXAMPLES:
 
 # fetch parameters from AWS SSM paths /dev/common, /dev/my-app, /dev/my-app/special
 # without recursive querying
-  aws-ssm-params-env /dev/common /dev/my-app /dev/my-app/special
+  aws-ssm-params /dev/common /dev/my-app /dev/my-app/special
 
 # fetch parameters from AWS SSM paths /dev/common, /dev/my-app, recursively, taking first parameter if there
 # is pa parameter with the same name  in subsequential parameter paths
-  aws-ssm-params-env -r /dev/common /dev/my-app
+  aws-ssm-params -r /dev/common /dev/my-app
 
 # fetch parameters from AWS SSM paths /dev/common, /dev/my-app, recursively, taking last parameter if there
 # is pa parameter with the same name  in subsequential parameter paths
-  aws-ssm-params-env -l -r /dev/common /dev/my-app
+  aws-ssm-params -l -r /dev/common /dev/my-app
 
 # completely env variable driven invocation, useful for ENTRYPOINT integration
-  SSM_PATHS="/dev/common,/dev/my-app" SSM_RECURSIVE=1 SSM_USE_LAST=1 aws-ssm-params-env
+  SSM_PATHS="/dev/common,/dev/my-app" SSM_RECURSIVE=1 SSM_USE_LAST=1 aws-ssm-params
+```
+
+### ls
+
+Lists AWS SSM parameters at given paths; [glob(7)][glob] patterns are supported in last segment of the name.
+
+```
+Usage: aws-ssm-params ls [-hrvV] [--full-version] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>] PATH...
+Lists parameters
+      PATH...             One or more parameter paths or glob patterns
+
+OPTIONS:
+      --endpoint=<endpoint>
+                          AWS endpoint (optional, useful for testing)
+                            Default:
+      --region=<region>   AWS region (optional, useful for testing)
+                            Default:
+  -v, --verbose           Verbose execution
+  -L, --log-level=<logLevel>
+                          Logger level (off/warn/info/debug/trace)
+      --full-version      Display detailed application version
+  -r, --recursive         List parameters in sub-paths
+  -h, --help              Show this help message and exit.
 ```
 
 ## Local development
@@ -148,5 +183,7 @@ docker compose up -d --wait
 [aws-ssm-param-store]: https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html
 [dc]: https://docs.docker.com/compose/
 [dc-env]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#use-the-env_file-attribute
+[dc-envfile]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#use-the-env_file-attribute
+[glob]: https://man7.org/linux/man-pages/man7/glob.7.html
 [aws-env]: https://github.com/droplr/aws-env
 [proj-dockerhub]: https://hub.docker.com/r/gracnar/aws-ssm-params-env
