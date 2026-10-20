@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv;
+package com.github.bfg.awsssmparams;
 
 import lombok.val;
 import picocli.CommandLine.Command;

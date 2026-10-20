@@ -1,7 +1,6 @@
-package com.github.bfg.awsssmparamsenv
+package com.github.bfg.awsssmparams
 
-import groovy.util.logging.Slf4j
-import org.junit.platform.commons.logging.LoggerFactory
+
 import org.slf4j.Logger
 import spock.lang.Specification
 

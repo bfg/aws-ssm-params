@@ -53,7 +53,7 @@ tasks.named('test') {
 }
 
 application {
-  mainClass = 'com.github.bfg.awsssmparamsenv.CmdRunner'
+  mainClass = 'com.github.bfg.awsssmparams.CmdRunner'
 }
 
 // gradlew run settings

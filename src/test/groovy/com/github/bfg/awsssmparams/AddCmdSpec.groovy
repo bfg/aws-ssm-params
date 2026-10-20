@@ -1,4 +1,5 @@
-package com.github.bfg.awsssmparamsenv
+package com.github.bfg.awsssmparams
+
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider

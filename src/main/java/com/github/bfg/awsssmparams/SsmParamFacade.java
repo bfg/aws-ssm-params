@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv;
+package com.github.bfg.awsssmparams;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

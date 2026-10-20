@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv
+package com.github.bfg.awsssmparams
 
 class BufPrintStream extends PrintStream {
   private final String name;

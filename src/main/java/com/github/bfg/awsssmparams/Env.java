@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv;
+package com.github.bfg.awsssmparams;
 
 import lombok.experimental.UtilityClass;
 import lombok.val;
