@@ -37,11 +37,13 @@ abstract class CmdSpecBase extends Specification {
 
 
     log.info("running cmdrunner: ${argsArray.toList()}")
-    def exitStatus = CmdRunner.runMain(argsArray)
+    def status = CmdRunner.runMain(argsArray)
     def stdoutStr = stdout.text()
     def stderrStr = stderr.text()
 
-    [exitStatus, stdoutStr, stderrStr]
+    log.info("command done, exit status: $status\n---stdout---\n$stderrStr---stdout---\n---stderr---\n$stderrStr---stderr---\n")
+
+    [status, stdoutStr, stderrStr]
   }
 
   def cliArgs(Collection<String> args, Consumer<List<String>> customizer = null) {

@@ -8,12 +8,12 @@ import spock.lang.AutoCleanup
 import spock.lang.Shared
 import spock.lang.Specification
 
-class AwsSsmParamFetcherSpec extends Specification {
+class SsmParamFacadeSpec extends Specification {
   private static final List<String> PATHS = ['/test/alpha', '/test/beta', '/test/gamma']
 
   @Shared
   @AutoCleanup
-  def fetcher = createFetcher()
+  def facade = createFacade()
 
   def gson = new GsonBuilder()
       .disableHtmlEscaping()
@@ -23,32 +23,32 @@ class AwsSsmParamFetcherSpec extends Specification {
     SsmParamQuery.builder().paths(PATHS)
   }
 
-  def createFetcher() {
+  SsmParamFacade createFacade() {
     SsmClient client = SsmClient.builder()
         .endpointOverride(URI.create('http://localhost:4566'))
         .region(Region.US_EAST_1)
         .build()
 
-    new AwsSsmParamFetcher(client)
+    new SsmParamFacade(client)
   }
 
-  def 'fetchParameters[default, top, no-recurse] should return expected result'() {
+  def 'fetchParametersAsMap[default, top, no-recurse] should return expected result'() {
     given:
     def query = newBuilder().clearPaths().path('/test').build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     res.isEmpty()
   }
 
-  def 'fetchParameters[default] fetchParameters should return expected result'() {
+  def 'fetchParametersAsMap[default] fetchParameters should return expected result'() {
     given:
     def query = newBuilder().build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -63,7 +63,7 @@ class AwsSsmParamFetcherSpec extends Specification {
     ])
   }
 
-  def 'fetchParameters[trim,last_one] should return expected result'() {
+  def 'fetchParametersAsMap[trim,last_one] should return expected result'() {
     given:
     def query = newBuilder()
         .useLast(true)
@@ -71,7 +71,7 @@ class AwsSsmParamFetcherSpec extends Specification {
         .build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -87,7 +87,7 @@ class AwsSsmParamFetcherSpec extends Specification {
     ])
   }
 
-  def 'fetchParameters[trim,last_one, sort] should return expected result'() {
+  def 'fetchParametersAsMap[trim,last_one, sort] should return expected result'() {
     given:
     def query = newBuilder()
         .useLast(true)
@@ -96,7 +96,7 @@ class AwsSsmParamFetcherSpec extends Specification {
         .build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -111,7 +111,7 @@ class AwsSsmParamFetcherSpec extends Specification {
     ])
   }
 
-  def 'fetchParameters[trim,last_one,reverse-sort] should return expected result'() {
+  def 'fetchParametersAsMap[trim,last_one,reverse-sort] should return expected result'() {
     given:
     def query = newBuilder()
         .useLast(true)
@@ -120,7 +120,7 @@ class AwsSsmParamFetcherSpec extends Specification {
         .build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -135,7 +135,7 @@ class AwsSsmParamFetcherSpec extends Specification {
     ])
   }
 
-  def 'fetchParameters[trim,last_one,reverse-sort] should return expected result'() {
+  def 'fetchParametersAsMap[trim,last_one,reverse-sort] should return expected result'() {
     given:
     def query = newBuilder()
         .useLast(true)
@@ -145,7 +145,7 @@ class AwsSsmParamFetcherSpec extends Specification {
         .build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -160,18 +160,18 @@ class AwsSsmParamFetcherSpec extends Specification {
     ])
   }
 
-  def 'fetchParameters[gamma] should return expected result'() {
+  def 'fetchParametersAsMap[gamma] should return expected result'() {
     given:
     def query = newBuilder()
         .clearPaths()
-        .path('test/gamma')
+        .path('/test/gamma')
         .trimValues(true)
         .sort(true)
         .uppercase(true)
         .build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -181,7 +181,7 @@ class AwsSsmParamFetcherSpec extends Specification {
     ])
   }
 
-  def 'fetchParameters[shell-injection] should return expected result'() {
+  def 'fetchParametersAsMap[shell-injection] should return expected result'() {
     given:
     def query = newBuilder()
         .clearPaths()
@@ -193,7 +193,7 @@ class AwsSsmParamFetcherSpec extends Specification {
         .build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -215,7 +215,7 @@ class AwsSsmParamFetcherSpec extends Specification {
     ])
   }
 
-  def 'fetchParameters[all should be fetched] should return expected result'() {
+  def 'fetchParametersAsMap[all should be fetched] should return expected result'() {
     given:
     def query = newBuilder()
         .clearPaths()
@@ -227,7 +227,7 @@ class AwsSsmParamFetcherSpec extends Specification {
         .build()
 
     when:
-    def res = fetcher.fetchParameters(query)
+    def res = facade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [

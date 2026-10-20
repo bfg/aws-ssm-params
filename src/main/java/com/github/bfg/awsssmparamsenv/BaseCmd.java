@@ -147,4 +147,8 @@ abstract class BaseCmd implements Callable<Integer> {
 
     return builder.build();
   }
+
+  protected SsmParamFacade createSsmFacade() {
+    return new SsmParamFacade(createSsmClient());
+  }
 }

@@ -5,7 +5,7 @@ import lombok.Singular;
 
 import java.util.List;
 
-@Builder
+@Builder(toBuilder = true)
 public record SsmParamQuery(
     @Singular
     List<String> paths,
