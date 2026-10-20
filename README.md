@@ -160,6 +160,37 @@ OPTIONS:
   -h, --help              Show this help message and exit.
 ```
 
+### add
+
+Creates AWS SSM parameters from one or more dotenv files. Each variable becomes a parameter under `PATH`.
+If no files are given, `add` reads dotenv content from standard input. Parameters are created as `String`
+unless `-l/--list` selects `StringList` or `-s/--secure` selects `SecureString`. Existing parameters are not
+overwritten unless `-f/--force` is given.
+
+```
+Usage: aws-ssm-params add [-fhlsvV] [--full-version] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>] PATH
+                          [FILE...]
+Creates parameters from dotenv files
+      PATH                Parameter Store path
+      [FILE...]           Dotenv files (stdin if omitted)
+
+OPTIONS:
+      --endpoint=<endpoint>
+                          AWS endpoint (optional, useful for testing)
+                            Default:
+      --region=<region>   AWS region (optional, useful for testing)
+                            Default:
+  -v, --verbose           Verbose execution
+  -L, --log-level=<logLevel>
+                          Logger level (off/warn/info/debug/trace)
+      --full-version      Display detailed application version
+  -f, --force             Overwrite existing parameters
+  -l, --list              Create StringList parameters
+  -s, --secure            Create SecureString parameters
+  -h, --help              Show this help message and exit.
+  -V, --version           Print version information and exit.
+```
+
 ## Local development
 
 ### Building

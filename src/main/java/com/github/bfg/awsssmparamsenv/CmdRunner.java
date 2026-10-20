@@ -45,6 +45,7 @@ public final class CmdRunner extends BaseCmd {
     return new CommandLine(new CmdRunner(_stdin, _stdout, _stderr))
         .addSubcommand(new EnvCmd(_stdin, _stdout, _stderr))
         .addSubcommand(new ListCmd(_stdin, _stdout, _stderr))
+        .addSubcommand(new AddCmd(_stdin, _stdout, _stderr))
         .setOut(new PrintWriter(_stdout, true))
         .setErr(new PrintWriter(_stderr, true))
         .execute(args);
