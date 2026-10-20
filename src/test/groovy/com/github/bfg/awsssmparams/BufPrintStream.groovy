@@ -25,6 +25,7 @@ class BufPrintStream extends PrintStream {
   }
 
   String text() {
+    baos.flush()
     baos.toString()
   }
 

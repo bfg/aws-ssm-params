@@ -59,7 +59,7 @@ abstract class CmdSpecBase extends Specification {
     def stdoutStr = stdout.text()
     def stderrStr = stderr.text()
 
-    log.info("command done, exit status: $status\n---stdout---\n$stderrStr---stdout---\n---stderr---\n$stderrStr---stderr---\n")
+    log.info("command done, exit status: $status\n---stdout---\n$stdoutStr---stdout---\n---stderr---\n$stderrStr---stderr---\n")
 
     [status, stdoutStr, stderrStr]
   }

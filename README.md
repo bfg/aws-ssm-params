@@ -192,6 +192,33 @@ OPTIONS:
   -V, --version           Print version information and exit.
 ```
 
+### rm
+
+Removes one or more named AWS SSM parameters. A [glob(7)][glob] pattern in the last path segment
+selects multiple parameters; quote patterns in the shell. Use `-r/--recursive` with a glob to include
+matching parameters in sub-paths. Recursive removal requires a glob pattern.
+
+```
+Usage: aws-ssm-params rm [-hrvVy] [--full-version] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>] PATH...
+Removes AWS SSM parameters
+      PATH...             One or more parameter paths (or glob patterns) to remove
+
+OPTIONS:
+      --endpoint=<endpoint>
+                          AWS endpoint (optional, useful for testing)
+                            Default:
+      --region=<region>   AWS region (optional, useful for testing)
+                            Default:
+  -v, --verbose           Verbose execution
+  -L, --log-level=<logLevel>
+                          Logger level (off/warn/info/debug/trace)
+      --full-version      Display detailed application version
+  -r, --recursive         Include parameters in sub-paths when using a glob
+  -y, --do-it             Actually remove the parameters
+  -h, --help              Show this help message and exit.
+  -V, --version           Print version information and exit.
+```
+
 ## Local development
 
 ### Building

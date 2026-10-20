@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.Parameter;
+import software.amazon.awssdk.services.ssm.model.ParameterNotFoundException;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterResponse;
 
@@ -42,6 +43,58 @@ public final class SsmParamFacade implements Closeable {
     );
     log.debug("added parameter: {} -> {}", paramPath, res);
     return res;
+  }
+
+  public List<String> removeParameters(Collection<String> paths, boolean recursive, boolean doIt) {
+    val pathsToRemove = sanitizeParameterPaths(paths)
+        .stream()
+        .flatMap(it -> findParametersForRemoval(it, recursive).stream())
+        .distinct()
+        .toList();
+
+    log.debug("will remove {} paths: {}", pathsToRemove.size(), pathsToRemove);
+    if (doIt) {
+      pathsToRemove.forEach(this::removeParameter);
+    }
+
+    return pathsToRemove;
+  }
+
+  private List<String> findParametersForRemoval(String path, boolean recursive) {
+    // is somebody trying to remove a single parameter?
+    if (!Utils.containsGlobSymbols(path) && exists(path)) {
+      return List.of(path);
+    }
+
+    val q = SsmParamQuery.builder()
+        .path(path)
+        .recursive(recursive)
+        .build();
+
+    return fetchParameters(q)
+        .stream()
+        .map(Parameter::name)
+        .distinct()
+        .toList();
+  }
+
+  public boolean removeParameter(String path) {
+    val res = ssmClient.deleteParameter(it -> it.name(path));
+    log.debug("removed parameter: {}", path);
+    return true;
+  }
+
+  public boolean exists(String path) {
+    var result = false;
+    try {
+      val parameter = ssmClient.getParameter(it -> it.name(path));
+      result = parameter != null;
+    } catch (ParameterNotFoundException e) {
+      // not needed
+    }
+
+    log.debug("parameter exists: {} -> {}", path, result);
+    return result;
   }
 
   /**
