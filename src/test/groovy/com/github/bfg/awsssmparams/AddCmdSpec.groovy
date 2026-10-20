@@ -1,10 +1,6 @@
 package com.github.bfg.awsssmparams
 
 
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.ssm.SsmClient
 import software.amazon.awssdk.services.ssm.model.ParameterNotFoundException
 
 import java.nio.charset.StandardCharsets
@@ -43,6 +39,51 @@ class AddCmdSpec extends CmdSpecBase {
     result
   }
 
+  def 'should NOT create a parameter unless -y/--do-it is given'() {
+    given:
+    def key = 'thou_shall_not_exist'
+    def target = ssmPath(key)
+    def file = writeDotEnv("$key=some-value")
+
+    when:
+    def (status, stdout, stderr) = runCmd([parameterPath, file.toString()])
+
+    then:
+    status == 0
+    stdout.contains("[dry-run] add: $target")
+    stderr.isEmpty()
+
+    when:
+    ssmClient.getParameter { it.name(target) }
+
+    then:
+    thrown(ParameterNotFoundException)
+  }
+
+  def 'should create a parameter if #arg is given'() {
+    given:
+    def key = 'thou_shall_exist'
+    def target = ssmPath(key)
+    def file = writeDotEnv("$key=some-value")
+
+    when:
+    def (status, stdout, stderr) = runCmd([arg, parameterPath, file.toString()])
+
+    then:
+    status == 0
+    stdout.contains("add: $target")
+    stderr.isEmpty()
+
+    ssmClient.getParameter { it.name(target) } != null
+
+    cleanup:
+    ssmClient.deleteParameter {it.name(target)}
+
+    where:
+    arg << [ "-y", "--do-it"]
+  }
+
+
   def 'reads multiple dotenv files and creates String parameters'() {
     given:
     Path first = writeDotEnv("""# comment
@@ -56,7 +97,7 @@ HASH  ${separator}   value#part
     String equals = ssmPath('EQUALS')
 
     when:
-    def (status, stdout, stderr) = runCmd([parameterPath, first.toString(), second.toString()])
+    def (status, stdout, stderr) = runCmd(['-y', parameterPath, first.toString(), second.toString()])
 
     then:
     status == 0
@@ -69,7 +110,7 @@ HASH  ${separator}   value#part
     ssmClient.getParameter { it.name(alpha) }.parameter().typeAsString() == 'String'
 
     where:
-    separator << [ '=', ':']
+    separator << ['=', ':']
   }
 
   def 'does not overwrite a parameter without force'() {
@@ -79,7 +120,7 @@ HASH  ${separator}   value#part
     Path file = writeDotEnv('VALUE=replacement\n')
 
     when:
-    def (status, stdout, stderr) = runCmd([parameterPath, file.toString()])
+    def (status, stdout, stderr) = runCmd(['-y', parameterPath, file.toString()])
 
     then:
     status == 1
@@ -88,7 +129,7 @@ HASH  ${separator}   value#part
     ssmClient.getParameter { it.name(target) }.parameter().value() == 'original'
 
     when:
-    (status, stdout, stderr) = runCmd(['-f', parameterPath, file.toString()])
+    (status, stdout, stderr) = runCmd(['-f', '-y', parameterPath, file.toString()])
 
     then:
     status == 0
@@ -103,7 +144,7 @@ HASH  ${separator}   value#part
     Path file = writeDotEnv('VALUE=one,two\n')
 
     when:
-    def args = [parameterPath, file.toString()]
+    def args = ['-y', parameterPath, file.toString()]
     if (!option.isBlank()) args.addFirst(option)
     def (status, stdout, stderr) = runCmd(args)
 
@@ -130,7 +171,7 @@ HASH  ${separator}   value#part
     CmdRunner.stdioStreams(input, stdout, stderr)
 
     when:
-    int status = CmdRunner.runMain(cliArgs([parameterPath]))
+    int status = CmdRunner.runMain(cliArgs(['-y', parameterPath]))
 
     then:
     status == 0
@@ -145,7 +186,7 @@ HASH  ${separator}   value#part
     def file = writeDotEnv('\nnot an assignment\n')
 
     when:
-    def (status, stdout, stderr) = runCmd([parameterPath, file.toString()])
+    def (status, stdout, stderr) = runCmd(['-y', parameterPath, file.toString()])
 
     then:
     status == 1
