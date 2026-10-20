@@ -47,10 +47,7 @@ public class AddCmd extends BaseCmd {
       return die("--list and --secure cannot be used together");
     }
 
-    String parameterPath = path.replaceAll("/+$", "");
-    if (!path.startsWith("/")) {
-      return die("Bad AWS SSM parameter path: " + path);
-    }
+    val parameterPath = SsmParamFacade.checkParameterPath(path);
 
     val params = new LinkedHashMap<String, String>();
     if (files.isEmpty()) {
@@ -62,21 +59,14 @@ public class AddCmd extends BaseCmd {
       return die("No parameters were read from input files.");
     }
 
-
     val paramType = list ? ParameterType.STRING_LIST
         : secure ? ParameterType.SECURE_STRING : ParameterType.STRING;
 
-    try (val ssmClient = createSsmClient()) {
+    try (val facade = createSsmFacade()) {
       params.forEach((name, value) -> {
-        val ssmName = parameterPath + "/" + name;
-        val res = ssmClient.putParameter(it ->
-            it.name(ssmName)
-                .type(paramType)
-                .value(value)
-                .overwrite(force)
-        );
-
-        stdout.println("add: " + ssmName);
+        val ssmPath = parameterPath + "/" + name;
+        facade.addParameter(ssmPath, value, paramType, force);
+        stdout.println("add: " + ssmPath);
       });
     } catch (Throwable t) {
       return die("Add operation failed", t);

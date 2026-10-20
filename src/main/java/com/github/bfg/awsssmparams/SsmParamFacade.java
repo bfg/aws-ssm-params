@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import software.amazon.awssdk.services.ssm.SsmClient;
 import software.amazon.awssdk.services.ssm.model.Parameter;
+import software.amazon.awssdk.services.ssm.model.ParameterType;
+import software.amazon.awssdk.services.ssm.model.PutParameterResponse;
 
 import java.io.Closeable;
 import java.nio.file.FileSystems;
@@ -18,6 +20,29 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public final class SsmParamFacade implements Closeable {
   private final SsmClient ssmClient;
+
+  /**
+   * Adds parameter.
+   *
+   * @param path      parameter path
+   * @param value     parameter value
+   * @param type      parameter type
+   * @param overwrite whether to overwrite existing parameter
+   * @return create response on success
+   * @throws IllegalArgumentException                           if bad parameter name was given
+   * @throws software.amazon.awssdk.core.exception.SdkException if AWS SDK call failed
+   */
+  public PutParameterResponse addParameter(String path, String value, ParameterType type, boolean overwrite) {
+    val paramPath = checkParameterPath(path);
+    val res = ssmClient.putParameter(it -> it
+        .name(paramPath)
+        .type(type)
+        .value(value)
+        .overwrite(overwrite)
+    );
+    log.debug("added parameter: {} -> {}", paramPath, res);
+    return res;
+  }
 
   /**
    * Fetches parameters for a given query and returns a {@link Map} of sanitized parameter key -> {@link Parameter} value
@@ -124,7 +149,7 @@ public final class SsmParamFacade implements Closeable {
 
   private List<String> sanitizeParameterPaths(Collection<String> paths) {
     val result = paths.stream()
-        .map(this::sanitizeParameterPath)
+        .map(SsmParamFacade::sanitizeParameterPath)
         .filter(it -> !it.isEmpty())
         .distinct()
         .toList();
@@ -136,7 +161,7 @@ public final class SsmParamFacade implements Closeable {
     return result;
   }
 
-  private String sanitizeParameterPath(String path) {
+  private static String sanitizeParameterPath(String path) {
     // replace multiple slashes with a single one
     var result = path.trim().replaceAll("/+", "/");
 
@@ -150,6 +175,21 @@ public final class SsmParamFacade implements Closeable {
 
     log.trace("sanitizeParameterPath() `{}` -> `{}`", path, result);
     return result;
+  }
+
+  /**
+   * Checks AWS SSM parameter path.
+   *
+   * @param path use-specified SSM parameter path
+   * @return sanitized parameter path
+   * @throws IllegalArgumentException when invalid path is given
+   */
+  public static String checkParameterPath(String path) {
+    val sanitizedPath = sanitizeParameterPath(path);
+    if (sanitizedPath.isEmpty()) {
+      throw new IllegalArgumentException("Invalid SSM parameter path: `" + path + "`");
+    }
+    return sanitizedPath;
   }
 
   /**
