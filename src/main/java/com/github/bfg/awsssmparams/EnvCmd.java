@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv;
+package com.github.bfg.awsssmparams;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -102,7 +102,7 @@ public class EnvCmd extends BaseCmd {
 
   @Override
   protected int doCall() {
-    try (var fetcher = new AwsSsmParamFetcher(createSsmClient())) {
+    try (var ssmFacade = createSsmFacade()) {
       val verifiedPaths = Utils.csvStream(paths).distinct().toList();
       val badPaths = verifiedPaths.stream().filter(it -> !it.startsWith("/")).toList();
       if (!badPaths.isEmpty()) {
@@ -123,7 +123,7 @@ public class EnvCmd extends BaseCmd {
         log.debug("using query: {}", query);
       }
 
-      var ssmParams = fetcher.fetchParameters(query);
+      var ssmParams = ssmFacade.fetchParameterValuesAsMap(query);
 
       // format output and print it
       var formattedResult = formatParams(ssmParams);

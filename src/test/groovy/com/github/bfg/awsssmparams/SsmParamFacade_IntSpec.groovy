@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv
+package com.github.bfg.awsssmparams
 
 
 import software.amazon.awssdk.services.ssm.SsmClient
@@ -8,14 +8,14 @@ import spock.lang.Shared
 import spock.lang.Specification
 
 @Ignore
-class AwsSsmParamFetcher_IntSpec extends Specification {
+class SsmParamFacade_IntSpec extends Specification {
   @Shared
   @AutoCleanup
   def fetcher = createFetcher()
 
   def createFetcher() {
     SsmClient client = SsmClient.builder().build()
-    new AwsSsmParamFetcher(client)
+    new SsmParamFacade(client)
   }
 
   SsmParamQuery.SsmParamQueryBuilder newBuilder() {

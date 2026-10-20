@@ -1,11 +1,11 @@
-package com.github.bfg.awsssmparamsenv;
+package com.github.bfg.awsssmparams;
 
 import lombok.Builder;
 import lombok.Singular;
 
 import java.util.List;
 
-@Builder
+@Builder(toBuilder = true)
 public record SsmParamQuery(
     @Singular
     List<String> paths,

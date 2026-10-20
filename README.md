@@ -162,17 +162,18 @@ OPTIONS:
 
 ### add
 
-Creates AWS SSM parameters from one or more dotenv files. Each variable becomes a parameter under `PATH`.
+Creates AWS SSM parameters from one or more dotenv files using `key=value` or `key="value"` lines;
+blank lines and lines starting with `#` are ignored. Each variable becomes a parameter under `PATH`.
 If no files are given, `add` reads dotenv content from standard input. Parameters are created as `String`
-unless `-l/--list` selects `StringList` or `-s/--secure` selects `SecureString`. Existing parameters are not
+unless `--list` selects `StringList` or `-s/--secure` selects `SecureString`. Existing parameters are not
 overwritten unless `-f/--force` is given.
 
 ```
-Usage: aws-ssm-params add [-fhlsvV] [--full-version] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>] PATH
-                          [FILE...]
-Creates parameters from dotenv files
-      PATH                Parameter Store path
-      [FILE...]           Dotenv files (stdin if omitted)
+Usage: aws-ssm-params add [-fhsvV] [--full-version] [--list] [--endpoint=<endpoint>] [-L=<logLevel>]
+                          [--region=<region>] PATH [FILE...]
+Creates AWS SSM parameters from dotenv files
+      PATH                AWS SSM Parameter Store path to add parameters into
+      [FILE...]           Dotenv files (stdin if omitted or "-")
 
 OPTIONS:
       --endpoint=<endpoint>
@@ -185,8 +186,8 @@ OPTIONS:
                           Logger level (off/warn/info/debug/trace)
       --full-version      Display detailed application version
   -f, --force             Overwrite existing parameters
-  -l, --list              Create StringList parameters
-  -s, --secure            Create SecureString parameters
+      --list              Create parameters of StringList type
+  -s, --secure            Create parameters of SecureString type
   -h, --help              Show this help message and exit.
   -V, --version           Print version information and exit.
 ```

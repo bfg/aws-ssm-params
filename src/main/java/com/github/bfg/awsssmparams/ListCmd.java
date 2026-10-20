@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv;
+package com.github.bfg.awsssmparams;
 
 import lombok.val;
 import picocli.CommandLine.Command;
@@ -27,7 +27,7 @@ public class ListCmd extends BaseCmd {
 
   @Override
   protected int doCall() {
-    try (var fetcher = new AwsSsmParamFetcher(createSsmClient())) {
+    try (var ssmFacade = createSsmFacade()) {
       val query = SsmParamQuery.builder()
           .paths(Utils.csvStream(paths).distinct().toList())
           .recursive(recursive)
@@ -35,7 +35,7 @@ public class ListCmd extends BaseCmd {
           .build();
 
 
-      fetcher.listParameters(query)
+      ssmFacade.fetchParameters(query)
           .forEach(it -> stdout.println(fmtParameter(it)));
       return 0;
     } catch (Throwable t) {

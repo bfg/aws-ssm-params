@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv
+package com.github.bfg.awsssmparams
 
 
 import groovy.util.logging.Slf4j

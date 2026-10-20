@@ -1,8 +1,13 @@
-package com.github.bfg.awsssmparamsenv
+package com.github.bfg.awsssmparams
 
-import groovy.util.logging.Slf4j
-import org.junit.platform.commons.logging.LoggerFactory
+
 import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.ssm.SsmClient
+import spock.lang.AutoCleanup
 import spock.lang.Specification
 
 import java.nio.charset.StandardCharsets
@@ -11,9 +16,15 @@ import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
 abstract class CmdSpecBase extends Specification {
-  Logger log = org.slf4j.LoggerFactory.getLogger(getClass())
+  static def awsEndpoint = 'http://localhost:4566'
+  static def awsRegion = 'us-east-1'
+
+  Logger log = LoggerFactory.getLogger(getClass())
   BufPrintStream stdout = BufPrintStream.create("stdout")
   BufPrintStream stderr = BufPrintStream.create("stderr")
+
+  @AutoCleanup
+  SsmClient ssmClient = createSsmClient()
 
   def setup() {
     CmdRunner.stdioStreams(stdout, stderr)
@@ -29,23 +40,32 @@ abstract class CmdSpecBase extends Specification {
     ""
   }
 
+  SsmClient createSsmClient() {
+    SsmClient.builder()
+        .endpointOverride(URI.create(awsEndpoint))
+        .region(Region.of(awsRegion))
+        .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create('test', 'test')))
+        .build()
+  }
+
   def runCmd(Collection<String> args, Consumer<List<String>> customizer = null) {
     def argsArray = cliArgs(args, customizer)
 
     // clear streams
     CmdRunner.stdioStreams(stdout.clear(), stderr.clear())
 
-
     log.info("running cmdrunner: ${argsArray.toList()}")
-    def exitStatus = CmdRunner.runMain(argsArray)
+    def status = CmdRunner.runMain(argsArray)
     def stdoutStr = stdout.text()
     def stderrStr = stderr.text()
 
-    [exitStatus, stdoutStr, stderrStr]
+    log.info("command done, exit status: $status\n---stdout---\n$stderrStr---stdout---\n---stderr---\n$stderrStr---stderr---\n")
+
+    [status, stdoutStr, stderrStr]
   }
 
   def cliArgs(Collection<String> args, Consumer<List<String>> customizer = null) {
-    def defaultArgs = ['--endpoint=http://localhost:4566', '--region=us-east-1']
+    def defaultArgs = ['--endpoint=' + awsEndpoint, '--region=' + awsRegion]
 
     def subCommand = subCommand()
     if (!subCommand.isBlank()) {

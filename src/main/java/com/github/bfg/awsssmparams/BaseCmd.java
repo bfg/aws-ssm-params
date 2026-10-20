@@ -1,4 +1,4 @@
-package com.github.bfg.awsssmparamsenv;
+package com.github.bfg.awsssmparams;
 
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -146,5 +146,9 @@ abstract class BaseCmd implements Callable<Integer> {
     }
 
     return builder.build();
+  }
+
+  protected SsmParamFacade createSsmFacade() {
+    return new SsmParamFacade(createSsmClient());
   }
 }
