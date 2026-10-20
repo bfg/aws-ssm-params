@@ -29,6 +29,9 @@ import java.util.stream.Collectors;
 )
 @RequiredArgsConstructor
 abstract class BaseCmd implements Callable<Integer> {
+  private static final String localstackEndpoint = "http://localhost:4566";
+  private static final String localstackRegion = "us-east-1";
+
   protected Logger log = LoggerFactory.getLogger(getClass());
 
   @Option(names = {"--endpoint"},
@@ -40,6 +43,10 @@ abstract class BaseCmd implements Callable<Integer> {
       showDefaultValue = Visibility.ALWAYS,
       description = "AWS region (optional, useful for testing)")
   String region = Env.asString("AWS_REGION");
+
+  @Option(names = {"--local"},
+      description = "Use locally running localstack AWS SSM instance instead of real AWS SSM endpoint?")
+  boolean useLocalStack = false;
 
   @Option(names = {"-v", "--verbose"}, description = "Verbose execution")
   boolean verbose = false;
@@ -76,6 +83,14 @@ abstract class BaseCmd implements Callable<Integer> {
       Logback.setLogLevel(getClass().getPackage().getName(), "DEBUG");
     }
 
+    if (useLocalStack) {
+      log.debug("Using local stack AWS SSM instance: localstackEndpoint");
+      endpoint = localstackEndpoint;
+      if (region.isBlank()) {
+        region = localstackRegion;
+      }
+    }
+
     return doCall();
   }
 
@@ -94,6 +109,12 @@ abstract class BaseCmd implements Callable<Integer> {
    * @return the exit status
    */
   protected abstract int doCall();
+
+  protected void printVerbose(String msg) {
+    if (verbose) {
+      stderr.println("verbose: " + msg);
+    }
+  }
 
   protected int die(String msg, Throwable t) {
     var exMsg = t.getMessage() == null ? t.toString() : t.getMessage();
