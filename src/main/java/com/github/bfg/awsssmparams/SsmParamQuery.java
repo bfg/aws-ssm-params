@@ -1,6 +1,7 @@
 package com.github.bfg.awsssmparams;
 
 import lombok.Builder;
+import lombok.NonNull;
 import lombok.Singular;
 
 import java.util.List;
@@ -8,7 +9,7 @@ import java.util.List;
 @Builder(toBuilder = true)
 public record SsmParamQuery(
     @Singular
-    List<String> paths,
+    List<@NonNull String> paths,
     boolean recursive,
     boolean sort,
     boolean reverseSort,

@@ -140,6 +140,9 @@ abstract class BaseCmd implements Callable<Integer> {
 
   protected int die(String msg, Throwable t) {
     var exMsg = t.getMessage() == null ? t.toString() : t.getMessage();
+    if (verbose) {
+      t.printStackTrace(stderr);
+    }
     return die(msg + ": " + exMsg);
   }
 

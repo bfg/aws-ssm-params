@@ -1,18 +1,17 @@
 package com.github.bfg.awsssmparams;
 
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import software.amazon.awssdk.services.ssm.SsmClient;
-import software.amazon.awssdk.services.ssm.model.Parameter;
-import software.amazon.awssdk.services.ssm.model.ParameterNotFoundException;
-import software.amazon.awssdk.services.ssm.model.ParameterType;
-import software.amazon.awssdk.services.ssm.model.PutParameterResponse;
+import software.amazon.awssdk.services.ssm.model.*;
 
 import java.io.Closeable;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -45,20 +44,74 @@ public final class SsmParamFacade implements Closeable {
     return res;
   }
 
-  public List<String> removeParameters(Collection<String> paths, boolean recursive, boolean doIt) {
-    val pathsToRemove = sanitizeParameterPaths(paths)
+  /**
+   * Removes one or more parameters.
+   *
+   * @param cfg parameter removal config
+   * @return number of removed parameters
+   */
+  public long removeParameters(SsmRemoveParamConfig cfg) {
+    return removeParameters(cfg, this::emptyConsumer);
+  }
+
+  /**
+   * Removes one or more parameters.
+   *
+   * @param cfg      parameter removal config
+   * @param consumer removal consumer - invoked with removed path as soon it's removed
+   * @return number of removed parameters
+   */
+  public long removeParameters(SsmRemoveParamConfig cfg, Consumer<String> consumer) {
+    val pathsToRemove = sanitizeParameterPaths(cfg.paths())
         .stream()
-        .flatMap(it -> findParametersForRemoval(it, recursive).stream())
+        .flatMap(it -> findParametersForRemoval(it, cfg.recursive()).stream())
         .distinct()
         .toList();
 
     log.debug("will remove {} paths: {}", pathsToRemove.size(), pathsToRemove);
-    if (doIt) {
-      pathsToRemove.forEach(this::removeParameter);
-    }
+    val numRemoved = pathsToRemove.stream()
+        .map(it -> {
+          var wasRemoved = false;
+          if (cfg.doIt()) {
+            removeParameter(it);
+            wasRemoved = true;
+          }
+          runConsumer(consumer, it);
 
-    return pathsToRemove;
+          return wasRemoved;
+        })
+        .filter(it -> it)
+        .count();
+
+    log.debug("removed {} SSM parameter(s)", numRemoved);
+    return numRemoved;
   }
+
+  /**
+   * Removes a single SSM parameter
+   *
+   * @param path parameter path
+   * @return whether SSM parameter was removed
+   */
+  public boolean removeParameter(String path) {
+    try {
+      ssmClient.deleteParameter(it -> it.name(path));
+      log.debug("removed parameter: {}", path);
+      return true;
+    } catch (ParameterNotFoundException t) {
+      return false;
+    }
+  }
+
+  public long removeParameters(Collection<String> paths) {
+    val numRemoved = paths.stream()
+        .filter(this::removeParameter)
+        .count();
+
+    log.debug("removed {} parameter(s)", numRemoved);
+    return numRemoved;
+  }
+
 
   private List<String> findParametersForRemoval(String path, boolean recursive) {
     // is somebody trying to remove a single parameter?
@@ -78,23 +131,172 @@ public final class SsmParamFacade implements Closeable {
         .toList();
   }
 
-  public boolean removeParameter(String path) {
-    val res = ssmClient.deleteParameter(it -> it.name(path));
-    log.debug("removed parameter: {}", path);
-    return true;
+  /**
+   * Tells whether SSM parameter exists.
+   *
+   * @param path AWS SSM path
+   * @return true/false
+   * @see #isDirectory(String)
+   */
+  public boolean exists(String path) {
+    var result = fetchParameter(path) != null;
+    log.debug("parameter exists: {} -> {}", path, result);
+    return result;
   }
 
-  public boolean exists(String path) {
-    var result = false;
+  public Parameter fetchParameter(String path) {
+    val finalPath = sanitizeParameterPath(path);
     try {
-      val parameter = ssmClient.getParameter(it -> it.name(path));
-      result = parameter != null;
+      val result = ssmClient.getParameter(it -> it.name(finalPath).withDecryption(true)).parameter();
+      log.debug("fetched parameter: {}", path);
+      return result;
     } catch (ParameterNotFoundException e) {
       // not needed
     }
 
-    log.debug("parameter exists: {} -> {}", path, result);
+    return null;
+  }
+
+  /**
+   * Tells whether given path is a "directory"
+   *
+   * @param path AWS SSM parameter path
+   * @return true/false
+   * @see #exists(String)
+   */
+  public boolean isDirectory(String path) {
+    val sanitizedPath = sanitizeParameterPath(path);
+    val nameFilter = ParameterStringFilter.builder()
+        .key("Path")
+        .values(sanitizedPath)
+        .option("Recursive")
+        .build();
+
+    val pathPrefixLength = sanitizedPath.length() + 1;
+    val numChildren = ssmClient.describeParameters(it -> it.maxResults(5).parameterFilters(nameFilter))
+        .parameters()
+        .stream()
+        .map(ParameterMetadata::name)
+        .filter(it -> it.length() >= pathPrefixLength)
+        .map(it -> it.substring(pathPrefixLength))
+        .filter(it -> !it.isBlank())
+        .count();
+
+    val result = numChildren > 0;
+    log.debug("isDirectory: {} => {} ({} children)", sanitizedPath, result, numChildren);
     return result;
+  }
+
+  /**
+   * Copies one or more parameters from one location to another.
+   *
+   * @param cfg copy task configuration
+   * @return number of copied parameters
+   */
+  public long copyParameters(@NonNull SsmCopyParamConfig cfg) {
+    return copyParameters(cfg, this::emptyConsumer);
+  }
+
+  /**
+   * Copies one or more parameters from one location to another.
+   *
+   * @param cfg      copy task configuration
+   * @param consumer consumer that gets invoked as soon as single copy operation is complete
+   * @return number of copied parameters
+   */
+  public long copyParameters(@NonNull SsmCopyParamConfig cfg,
+                             @NonNull Consumer<Map.Entry<String, String>> consumer) {
+    return copyParameters(cfg, false, consumer);
+  }
+
+  private long copyParameters(@NonNull SsmCopyParamConfig cfg,
+                              boolean removeSrc,
+                              @NonNull Consumer<Map.Entry<String, String>> consumer) {
+    val srcPath = checkParameterPath(cfg.source());
+    val dstPath = checkParameterPath(cfg.destination());
+    if (Utils.containsGlobSymbols(dstPath)) {
+      throw new IllegalArgumentException("Invalid destination path: " + dstPath);
+    }
+
+    log.debug("copy parameters: {} -> {} -> {}", srcPath, dstPath, cfg);
+
+    val newParamSrcPath = Utils.containsGlobSymbols(srcPath) ? Utils.dirname(srcPath) : srcPath;
+    val q = SsmParamQuery.builder().path(srcPath).recursive(cfg.recursive()).build();
+    val parametersToCopy = fetchParameters(srcPath, q);
+
+    // time to copy them
+    val numOps = parametersToCopy.stream()
+        .map(parameter -> {
+          val newParameterPutReq = newParameterBuilder(parameter, newParamSrcPath, dstPath)
+              .overwrite(cfg.overwrite())
+              .build();
+
+          var wasCopied = false;
+
+          if (cfg.doIt()) {
+            ssmClient.putParameter(newParameterPutReq);
+            log.debug("copied parameter: {} -> {}", parameter.name(), newParameterPutReq.name());
+            if (removeSrc) {
+              removeParameter(parameter.name());
+            }
+            wasCopied = true;
+          }
+
+          val entry = Map.entry(parameter.name(), newParameterPutReq.name());
+          runConsumer(consumer, entry);
+
+          return wasCopied;
+        })
+        .filter(it -> it)
+        .count();
+
+    val opName = (removeSrc ? "moved" : "copied");
+    log.debug("{} {} parameter(s)", opName, numOps);
+    return numOps;
+  }
+
+  private PutParameterRequest.Builder newParameterBuilder(Parameter parameter, String srcPath, String dstPath) {
+    val srcParamPath = parameter.name();
+    var bn = srcParamPath.substring(srcPath.length());
+    if (bn.isEmpty()) bn = "/" + Utils.basename(srcParamPath);
+
+    val dstParamPath = dstPath + bn;
+    val nameFilter = ParameterStringFilter.builder().key("Name").option("Equals").values(srcParamPath).build();
+    val metadata = ssmClient.describeParameters(it -> it
+            .parameterFilters(nameFilter))
+        .parameters().stream()
+        .filter(it -> it.name().equals(srcParamPath))
+        .findFirst()
+        .orElse(null);
+    val tags = ssmClient.listTagsForResource(it -> it
+            .resourceType(ResourceTypeForTagging.PARAMETER)
+            .resourceId(srcParamPath))
+        .tagList();
+
+    val reqBuilder = PutParameterRequest.builder()
+        .name(dstParamPath)
+        .value(parameter.value())
+        .type(parameter.typeAsString())
+        .overwrite(false);
+
+    if (metadata != null) {
+      if (metadata.description() != null) reqBuilder.description(metadata.description());
+      if (metadata.keyId() != null) reqBuilder.keyId(metadata.keyId());
+      if (metadata.allowedPattern() != null) reqBuilder.allowedPattern(metadata.allowedPattern());
+      if (metadata.tierAsString() != null) reqBuilder.tier(metadata.tierAsString());
+      if (metadata.dataType() != null && parameter.type() == ParameterType.STRING)
+        reqBuilder.dataType(metadata.dataType());
+      if (!metadata.policies().isEmpty()) {
+        reqBuilder.policies(metadata.policies().stream()
+            .map(it -> it.policyText())
+            .collect(Collectors.joining(",", "[", "]")));
+      }
+    }
+
+    if (!tags.isEmpty()) reqBuilder.tags(tags);
+
+    log.debug("copying parameter: {} -> {}", srcParamPath, dstParamPath);
+    return reqBuilder;
   }
 
   /**
@@ -261,13 +463,31 @@ public final class SsmParamFacade implements Closeable {
   }
 
   private List<Parameter> fetchParameters(String path, SsmParamQuery query) {
+    path = sanitizeParameterPath(path);
+
+    // does basename contain glob pattern?
     val basename = Utils.basename(path);
-
     val containsGlob = Utils.containsGlobSymbols(basename);
-    val rootPath = (containsGlob) ? Utils.dirname(path) : path;
 
+    var searchPath = "";
+    if (containsGlob) {
+      // contains glob, we'll use parent to search for parameters
+      searchPath = Utils.dirname(path);
+    } else if (isDirectory(path)) {
+      // if it's a directory, use it for search path
+      searchPath = path;
+    } else {
+      // maybe it's a concrete, single existing parameter
+      val parameter = fetchParameter(path);
+
+      // return the parameter or empty list
+      return (parameter != null) ? List.of(parameter) : List.of();
+    }
+
+    // well, time to get some parameters :-)
+    val finalSearchPath = searchPath;
     var paramStream = ssmClient.getParametersByPathPaginator(it -> it
-            .path(rootPath)
+            .path(finalSearchPath)
             .recursive(query.recursive())
             .withDecryption(true)
             .maxResults(10))
@@ -291,6 +511,17 @@ public final class SsmParamFacade implements Closeable {
     val result = paramStream.toList();
     log.debug("[{}] retrieved {} parameters", path, result.size());
     return result;
+  }
+
+  private <T> void runConsumer(Consumer<T> consumer, T arg) {
+    try {
+      consumer.accept(arg);
+    } catch (Throwable t) {
+      log.warn("exception while running consumer with {}: {}", arg, t.getMessage(), t);
+    }
+  }
+
+  private void emptyConsumer(Object arg) {
   }
 
   @Override

@@ -1,19 +1,10 @@
 package com.github.bfg.awsssmparams
 
-
 import com.google.gson.GsonBuilder
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.ssm.SsmClient
-import spock.lang.AutoCleanup
-import spock.lang.Shared
-import spock.lang.Specification
+import software.amazon.awssdk.services.ssm.model.ParameterType
 
-class SsmParamFacadeSpec extends Specification {
+class SsmParamFacadeSpec extends CmdSpecBase {
   private static final List<String> PATHS = ['/test/alpha', '/test/beta', '/test/gamma']
-
-  @Shared
-  @AutoCleanup
-  def facade = createFacade()
 
   def gson = new GsonBuilder()
       .disableHtmlEscaping()
@@ -23,21 +14,12 @@ class SsmParamFacadeSpec extends Specification {
     SsmParamQuery.builder().paths(PATHS)
   }
 
-  SsmParamFacade createFacade() {
-    SsmClient client = SsmClient.builder()
-        .endpointOverride(URI.create('http://localhost:4566'))
-        .region(Region.US_EAST_1)
-        .build()
-
-    new SsmParamFacade(client)
-  }
-
   def 'fetchParametersAsMap[default, top, no-recurse] should return expected result'() {
     given:
     def query = newBuilder().clearPaths().path('/test').build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     res.isEmpty()
@@ -48,7 +30,7 @@ class SsmParamFacadeSpec extends Specification {
     def query = newBuilder().build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -71,7 +53,7 @@ class SsmParamFacadeSpec extends Specification {
         .build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -96,7 +78,7 @@ class SsmParamFacadeSpec extends Specification {
         .build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -120,7 +102,7 @@ class SsmParamFacadeSpec extends Specification {
         .build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -145,7 +127,7 @@ class SsmParamFacadeSpec extends Specification {
         .build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -171,7 +153,7 @@ class SsmParamFacadeSpec extends Specification {
         .build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -193,7 +175,7 @@ class SsmParamFacadeSpec extends Specification {
         .build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -227,7 +209,7 @@ class SsmParamFacadeSpec extends Specification {
         .build()
 
     when:
-    def res = facade.fetchParameterValuesAsMap(query)
+    def res = ssmFacade.fetchParameterValuesAsMap(query)
 
     then:
     assertJson(res, [
@@ -256,6 +238,42 @@ class SsmParamFacadeSpec extends Specification {
         "SHELL_INJECTION_M" : "`ls /etc`",
         "SHELL_INJECTION_N" : "\$(ls /etc)",
         "SHELL_INJECTION_O" : "my_super_function"])
+  }
+
+  def "exists/isDirectory should return expected result"() {
+    given:
+    def prefix = "/unit-test/is-dir/${UUID.randomUUID()}"
+    def paramA = "$prefix/a"
+    def paramB = "$prefix/b"
+
+    def cPrefix = "$prefix/c"
+    def paramC = "$cPrefix/x/y/z"
+
+    when:
+    ssmFacade.addParameter(paramA, "x", ParameterType.STRING, true)
+    ssmFacade.addParameter(paramB, "y", ParameterType.STRING, true)
+    ssmFacade.addParameter("$paramC", "z", ParameterType.STRING, true)
+
+    then:
+    ssmFacade.exists(paramA)
+    ssmFacade.exists(paramB)
+    !ssmFacade.exists(cPrefix)
+    ssmFacade.exists(paramC)
+
+    !ssmFacade.isDirectory(paramA)
+    !ssmFacade.isDirectory(paramB)
+
+    ssmFacade.isDirectory(cPrefix)
+    ssmFacade.isDirectory(cPrefix + '//')
+    !ssmFacade.isDirectory(paramC)
+    !ssmFacade.isDirectory("$paramC/")
+
+    !ssmFacade.exists('/unit-test/non-existing/foo/bar')
+    !ssmFacade.isDirectory('/unit-test/non-existing/foo/bar')
+
+    cleanup:
+    def cfg = SsmRemoveParamConfig.builder().path(prefix).recursive(true).doIt(true).build()
+    ssmFacade.removeParameters(cfg)
   }
 
   def assertJson(def actual, def expected) {

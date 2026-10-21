@@ -59,7 +59,7 @@ This tool picks up standard AWS SDK l and region configuration, such as `AWS_PRO
 also set `AWS_ENDPOINT` environment variable to point the tool to some unofficial AWS SSM endpoint
 (`http://localhost:4566/` for [localstack] SSM parameter store instance).
 
-### env
+### env (default sub-command)
 
 Fetches AWS SSM parameters from given paths and formats them in a way that is consumable by:
 
@@ -142,8 +142,9 @@ EXAMPLES:
 Lists AWS SSM parameters at given paths; [glob(7)][glob] patterns are supported in last segment of the name.
 
 ```
-Usage: aws-ssm-params ls [-hrvV] [--full-version] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>] PATH...
-Lists parameters
+Usage: aws-ssm-params ls [-hrvV] [--full-version] [--local] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>]
+                         PATH...
+Lists AWS SSM parameters
       PATH...             One or more parameter paths or glob patterns
 
 OPTIONS:
@@ -152,12 +153,14 @@ OPTIONS:
                             Default:
       --region=<region>   AWS region (optional, useful for testing)
                             Default:
+      --local             Use locally running localstack AWS SSM instance instead of real AWS SSM endpoint?
   -v, --verbose           Verbose execution
   -L, --log-level=<logLevel>
                           Logger level (off/warn/info/debug/trace)
       --full-version      Display detailed application version
   -r, --recursive         List parameters in sub-paths
   -h, --help              Show this help message and exit.
+  -V, --version           Print version information and exit.
 ```
 
 ### add
@@ -215,6 +218,35 @@ OPTIONS:
       --full-version      Display detailed application version
   -r, --recursive         Include parameters in sub-paths when using a glob
   -y, --do-it             Actually remove the parameters
+  -h, --help              Show this help message and exit.
+  -V, --version           Print version information and exit.
+```
+
+## cp
+
+Copies one or more AWS SSM parameters.
+
+```
+Usage: aws-ssm-params cp [-fhrvVy] [--full-version] [--local] [--endpoint=<endpoint>] [-L=<logLevel>]
+                         [--region=<region>] SOURCE DESTINATION
+Copies one or more AWS SSM parameters
+      SOURCE              Parameter name or basename glob pattern
+      DESTINATION         Destination directory
+
+OPTIONS:
+      --endpoint=<endpoint>
+                          AWS endpoint (optional, useful for testing)
+                            Default:
+      --region=<region>   AWS region (optional, useful for testing)
+                            Default:
+      --local             Use locally running localstack AWS SSM instance instead of real AWS SSM endpoint?
+  -v, --verbose           Verbose execution
+  -L, --log-level=<logLevel>
+                          Logger level (off/warn/info/debug/trace)
+      --full-version      Display detailed application version
+  -r, --recursive         Include matching parameters in sub-paths
+  -f, --force             Overwrite existing parameters
+  -y, --do-it             Actually perform potentially destructive operations
   -h, --help              Show this help message and exit.
   -V, --version           Print version information and exit.
 ```
