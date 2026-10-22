@@ -209,6 +209,36 @@ public final class SsmParamFacade implements Closeable {
     return copyParameters(cfg, false, consumer);
   }
 
+  /**
+   * Moves one or more parameters from one location to another.
+   *
+   * @param cfg move task configuration
+   * @return number of moved parameters
+   */
+  public long moveParameters(@NonNull SsmCopyParamConfig cfg) {
+    return moveParameters(cfg, this::emptyConsumer);
+  }
+
+  /**
+   * Moves one or more parameters from one location to another.
+   *
+   * @param cfg      move task configuration
+   * @param consumer consumer that gets invoked as soon as single copy operation is complete
+   * @return number of moved parameters
+   */
+  public long moveParameters(@NonNull SsmCopyParamConfig cfg,
+                             @NonNull Consumer<Map.Entry<String, String>> consumer) {
+    return copyParameters(cfg, true, consumer);
+  }
+
+  /**
+   * Copies parameters and optionally removes each source after its copy succeeds.
+   *
+   * @param cfg       copy task configuration
+   * @param removeSrc whether to remove source parameters after copying
+   * @param consumer  consumer invoked after each completed operation
+   * @return number of copied parameters
+   */
   private long copyParameters(@NonNull SsmCopyParamConfig cfg,
                               boolean removeSrc,
                               @NonNull Consumer<Map.Entry<String, String>> consumer) {
