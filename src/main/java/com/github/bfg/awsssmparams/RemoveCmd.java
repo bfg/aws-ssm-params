@@ -1,5 +1,6 @@
 package com.github.bfg.awsssmparams;
 
+import lombok.val;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -30,8 +31,14 @@ public class RemoveCmd extends BaseCmd {
   @Override
   protected int doCall() {
     try (var facade = createSsmFacade()) {
-      facade.removeParameters(paths, recursive, doit.doIt)
-          .forEach(it -> stdout.println(doit.maybeDryRun("rm: " + it)));
+      val rmCfg = SsmRemoveParamConfig.builder()
+          .paths(paths)
+          .recursive(recursive)
+          .doIt(doit.enabled())
+          .build();
+
+      facade.removeParameters(rmCfg,
+          it -> stdout.println(doit.maybeDryRun("rm: " + it)));
       return 0;
     } catch (Exception e) {
       return die("Remove operation failed", e);
