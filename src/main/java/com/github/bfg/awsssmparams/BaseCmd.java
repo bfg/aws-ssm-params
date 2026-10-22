@@ -3,10 +3,10 @@ package com.github.bfg.awsssmparams;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Visibility;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.ParentCommand;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
 
@@ -57,7 +57,7 @@ abstract class BaseCmd implements Callable<Integer> {
   @Option(names = {"--full-version"}, description = "Display detailed application version")
   boolean fullVersion = false;
 
-  @CommandLine.ParentCommand
+  @ParentCommand
   CmdRunner parentCmd;
 
   // stdio streams
@@ -95,11 +95,33 @@ abstract class BaseCmd implements Callable<Integer> {
   }
 
   protected void beforeCall() {
+    if (parentCmd != null) {
+      applySettingsFromParentCmd();
+    }
+  }
+
+  private void applySettingsFromParentCmd() {
     if (endpoint.isEmpty() && !parentCmd.endpoint.isEmpty()) {
       endpoint = parentCmd.endpoint;
     }
     if (region.isEmpty() && !parentCmd.region.isEmpty()) {
       region = parentCmd.region;
+    }
+
+    if (!useLocalStack && parentCmd.useLocalStack) {
+      useLocalStack = true;
+    }
+
+    if (!verbose && parentCmd.verbose) {
+      verbose = parentCmd.verbose;
+    }
+
+    if (logLevel.isBlank() && !parentCmd.logLevel.isBlank()) {
+      logLevel = parentCmd.logLevel;
+    }
+
+    if (!fullVersion && parentCmd.fullVersion) {
+      fullVersion = parentCmd.fullVersion;
     }
   }
 
