@@ -195,33 +195,6 @@ OPTIONS:
   -V, --version           Print version information and exit.
 ```
 
-### rm
-
-Removes one or more named AWS SSM parameters. A [glob(7)][glob] pattern in the last path segment
-selects multiple parameters; quote patterns in the shell. Use `-r/--recursive` with a glob to include
-matching parameters in sub-paths. Recursive removal requires a glob pattern.
-
-```
-Usage: aws-ssm-params rm [-hrvVy] [--full-version] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>] PATH...
-Removes AWS SSM parameters
-      PATH...             One or more parameter paths (or glob patterns) to remove
-
-OPTIONS:
-      --endpoint=<endpoint>
-                          AWS endpoint (optional, useful for testing)
-                            Default:
-      --region=<region>   AWS region (optional, useful for testing)
-                            Default:
-  -v, --verbose           Verbose execution
-  -L, --log-level=<logLevel>
-                          Logger level (off/warn/info/debug/trace)
-      --full-version      Display detailed application version
-  -r, --recursive         Include parameters in sub-paths when using a glob
-  -y, --do-it             Actually remove the parameters
-  -h, --help              Show this help message and exit.
-  -V, --version           Print version information and exit.
-```
-
 ## cp
 
 Copies one or more AWS SSM parameters.
@@ -247,6 +220,64 @@ OPTIONS:
   -r, --recursive         Include matching parameters in sub-paths
   -f, --force             Overwrite existing parameters
   -y, --do-it             Actually perform potentially destructive operations
+  -h, --help              Show this help message and exit.
+  -V, --version           Print version information and exit.
+```
+
+## mv
+
+Moves one or more AWS SSM parameters to a destination directory. The command shows a dry run by default;
+use `-y/--do-it` to copy each parameter and then remove its source. It accepts the same options as `cp`,
+including `-r/--recursive` for matching parameters in sub-paths and `-f/--force` to overwrite existing destinations.
+
+```
+Usage: aws-ssm-params mv [-fhrvVy] [--full-version] [--local] [--endpoint=<endpoint>] [-L=<logLevel>]
+                         [--region=<region>] SOURCE DESTINATION
+Moves one or more AWS SSM parameters
+      SOURCE              Parameter name or basename glob pattern
+      DESTINATION         Destination directory
+
+OPTIONS:
+      --endpoint=<endpoint>
+                          AWS endpoint (optional, useful for testing)
+                            Default:
+      --region=<region>   AWS region (optional, useful for testing)
+                            Default:
+      --local             Use locally running localstack AWS SSM instance instead of real AWS SSM endpoint?
+  -v, --verbose           Verbose execution
+  -L, --log-level=<logLevel>
+                          Logger level (off/warn/info/debug/trace)
+      --full-version      Display detailed application version
+  -r, --recursive         Include matching parameters in sub-paths
+  -f, --force             Overwrite existing parameters
+  -y, --do-it             Actually perform potentially destructive operations
+  -h, --help              Show this help message and exit.
+  -V, --version           Print version information and exit.
+```
+
+### rm
+
+Removes one or more named AWS SSM parameters. A [glob(7)][glob] pattern in the last path segment
+selects multiple parameters; quote patterns in the shell. Use `-r/--recursive` with a glob to include
+matching parameters in sub-paths. Recursive removal requires a glob pattern.
+
+```
+Usage: aws-ssm-params rm [-hrvVy] [--full-version] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>] PATH...
+Removes AWS SSM parameters
+      PATH...             One or more parameter paths (or glob patterns) to remove
+
+OPTIONS:
+      --endpoint=<endpoint>
+                          AWS endpoint (optional, useful for testing)
+                            Default:
+      --region=<region>   AWS region (optional, useful for testing)
+                            Default:
+  -v, --verbose           Verbose execution
+  -L, --log-level=<logLevel>
+                          Logger level (off/warn/info/debug/trace)
+      --full-version      Display detailed application version
+  -r, --recursive         Include parameters in sub-paths when using a glob
+  -y, --do-it             Actually remove the parameters
   -h, --help              Show this help message and exit.
   -V, --version           Print version information and exit.
 ```
