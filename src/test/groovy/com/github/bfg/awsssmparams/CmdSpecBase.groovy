@@ -24,7 +24,10 @@ abstract class CmdSpecBase extends Specification {
   BufPrintStream stderr = BufPrintStream.create("stderr")
 
   @AutoCleanup
-  SsmClient ssmClient = createSsmClient()
+  def ssmClient = createSsmClient()
+
+  @AutoCleanup
+  def ssmFacade = new SsmParamFacade(ssmClient)
 
   def setup() {
     CmdRunner.stdioStreams(stdout, stderr)

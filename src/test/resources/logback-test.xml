@@ -34,7 +34,7 @@
   <!-- per-test-class defined logger -->.
   <!--logger name="com.something.else" level="DEBUG" /-->
 
-  <!--logger name="com.github.bfg.awsssmparams" level="DEBUG" /-->
+  <logger name="com.github.bfg.awsssmparams" level="DEBUG" />
 </configuration>
 
 <!--

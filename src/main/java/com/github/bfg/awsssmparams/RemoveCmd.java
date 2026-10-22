@@ -2,6 +2,7 @@ package com.github.bfg.awsssmparams;
 
 import lombok.val;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -17,8 +18,8 @@ public class RemoveCmd extends BaseCmd {
   @Option(names = {"-r", "--recursive"}, description = "Include parameters in sub-paths when using a glob")
   boolean recursive;
 
-  @Option(names = {"-y", "--do-it"}, description = "Actually remove the parameters")
-  boolean doIt = false;
+  @Mixin
+  DoitMixin doit;
 
   @Parameters(arity = "1..*", paramLabel = "PATH", description = "One or more parameter paths (or glob patterns) to remove")
   List<String> paths;
@@ -30,16 +31,17 @@ public class RemoveCmd extends BaseCmd {
   @Override
   protected int doCall() {
     try (var facade = createSsmFacade()) {
-      facade.removeParameters(paths, recursive, doIt)
-          .forEach(it -> stdout.println(reportRemoved(it)));
+      val rmCfg = SsmRemoveParamConfig.builder()
+          .paths(paths)
+          .recursive(recursive)
+          .doIt(doit.enabled())
+          .build();
+
+      facade.removeParameters(rmCfg,
+          it -> stdout.println(doit.maybeDryRun("rm: " + it)));
       return 0;
     } catch (Exception e) {
       return die("Remove operation failed", e);
     }
-  }
-
-  private String reportRemoved(String path) {
-    val prefix = (doIt) ? "" : "[dry-run] ";
-    return prefix + "rm: " + path;
   }
 }

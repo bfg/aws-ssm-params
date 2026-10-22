@@ -3,6 +3,7 @@ package com.github.bfg.awsssmparams;
 import lombok.SneakyThrows;
 import lombok.val;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
@@ -37,6 +38,9 @@ public class AddCmd extends BaseCmd {
   @Parameters(index = "0", paramLabel = "PATH", description = "AWS SSM Parameter Store path to add parameters into")
   String path;
 
+  @Mixin
+  DoitMixin doit;
+
   @Parameters(index = "1..*", arity = "0..*", paramLabel = "FILE", description = "Dotenv files (stdin if omitted or \"-\")")
   List<String> files = List.of();
 
@@ -68,8 +72,10 @@ public class AddCmd extends BaseCmd {
     try (val facade = createSsmFacade()) {
       params.forEach((name, value) -> {
         val ssmPath = parameterPath + "/" + name;
-        facade.addParameter(ssmPath, value, paramType, force);
-        stdout.println("add: " + ssmPath);
+        if (doit.enabled()) {
+          facade.addParameter(ssmPath, value, paramType, force);
+        }
+        stdout.println(doit.maybeDryRun("add: " + ssmPath));
       });
     } catch (Throwable t) {
       return die("Add operation failed", t);

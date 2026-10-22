@@ -3,10 +3,10 @@ package com.github.bfg.awsssmparams;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Visibility;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.ParentCommand;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
 
@@ -29,6 +29,9 @@ import java.util.stream.Collectors;
 )
 @RequiredArgsConstructor
 abstract class BaseCmd implements Callable<Integer> {
+  private static final String localstackEndpoint = "http://localhost:4566";
+  private static final String localstackRegion = "us-east-1";
+
   protected Logger log = LoggerFactory.getLogger(getClass());
 
   @Option(names = {"--endpoint"},
@@ -41,6 +44,10 @@ abstract class BaseCmd implements Callable<Integer> {
       description = "AWS region (optional, useful for testing)")
   String region = Env.asString("AWS_REGION");
 
+  @Option(names = {"--local"},
+      description = "Use locally running localstack AWS SSM instance instead of real AWS SSM endpoint?")
+  boolean useLocalStack = false;
+
   @Option(names = {"-v", "--verbose"}, description = "Verbose execution")
   boolean verbose = false;
 
@@ -50,7 +57,7 @@ abstract class BaseCmd implements Callable<Integer> {
   @Option(names = {"--full-version"}, description = "Display detailed application version")
   boolean fullVersion = false;
 
-  @CommandLine.ParentCommand
+  @ParentCommand
   CmdRunner parentCmd;
 
   // stdio streams
@@ -76,15 +83,45 @@ abstract class BaseCmd implements Callable<Integer> {
       Logback.setLogLevel(getClass().getPackage().getName(), "DEBUG");
     }
 
+    if (useLocalStack) {
+      log.debug("Using local stack AWS SSM instance: localstackEndpoint");
+      endpoint = localstackEndpoint;
+      if (region.isBlank()) {
+        region = localstackRegion;
+      }
+    }
+
     return doCall();
   }
 
   protected void beforeCall() {
+    if (parentCmd != null) {
+      applySettingsFromParentCmd();
+    }
+  }
+
+  private void applySettingsFromParentCmd() {
     if (endpoint.isEmpty() && !parentCmd.endpoint.isEmpty()) {
       endpoint = parentCmd.endpoint;
     }
     if (region.isEmpty() && !parentCmd.region.isEmpty()) {
       region = parentCmd.region;
+    }
+
+    if (!useLocalStack && parentCmd.useLocalStack) {
+      useLocalStack = true;
+    }
+
+    if (!verbose && parentCmd.verbose) {
+      verbose = parentCmd.verbose;
+    }
+
+    if (logLevel.isBlank() && !parentCmd.logLevel.isBlank()) {
+      logLevel = parentCmd.logLevel;
+    }
+
+    if (!fullVersion && parentCmd.fullVersion) {
+      fullVersion = parentCmd.fullVersion;
     }
   }
 
@@ -95,8 +132,17 @@ abstract class BaseCmd implements Callable<Integer> {
    */
   protected abstract int doCall();
 
+  protected void printVerbose(String msg) {
+    if (verbose) {
+      stderr.println("verbose: " + msg);
+    }
+  }
+
   protected int die(String msg, Throwable t) {
     var exMsg = t.getMessage() == null ? t.toString() : t.getMessage();
+    if (verbose) {
+      t.printStackTrace(stderr);
+    }
     return die(msg + ": " + exMsg);
   }
 

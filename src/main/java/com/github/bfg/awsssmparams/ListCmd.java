@@ -11,7 +11,7 @@ import java.io.PrintStream;
 import java.util.List;
 
 @Command(name = "ls",
-    description = "Lists parameters",
+    description = "Lists AWS SSM parameters",
     sortOptions = false
 )
 public class ListCmd extends BaseCmd {
