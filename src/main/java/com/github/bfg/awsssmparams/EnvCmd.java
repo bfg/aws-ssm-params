@@ -93,7 +93,7 @@ public class EnvCmd extends BaseCmd {
 
   @Parameters(paramLabel = "PATH",
       showDefaultValue = CommandLine.Help.Visibility.ALWAYS,
-      description = "One or more AWS SSM parameter store paths to fetch parameters from")
+      description = "One or more AWS SSM parameter store paths to fetch parameters from; each path is also being split by the comma (',') character, so multiple paths can be specified with a single argument; changing order of paths affects the output.")
   List<String> paths = Env.asStringList("SSM_PATHS");
 
   public EnvCmd(InputStream stdin, PrintStream stdout, PrintStream stderr) {

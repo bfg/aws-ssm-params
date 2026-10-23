@@ -1,80 +1,176 @@
-# aws-ssm-params - a secure way to expose AWS SSM Parameter Store parameters as environment variables
+# aws-ssm-params
 
-`aws-ssm-params` is a small CLI tool that securely exposes parameters and secrets stored in one or more
-[AWS Systems Manager Parameter Store][aws-ssm-param-store] paths (recursion supported) and outputs them in
-a format that can be used by shell to export environment variables before starting a real
-application or to construct [docker compose .env][dc-env].
+`aws-ssm-params` is a CLI for using values from [AWS Systems Manager Parameter Store][aws-ssm-param-store]
+as environment variables. It also provides tools for listing, importing, exporting, copying, moving, and
+removing AWS SSM parameters.
 
-This project was inspired by:
-- [aws-env] - original tool for exporting AWS SSM parameters as environment variables
-- [ssmtui] - great terminal GUI for browsing AWS SSM parameter store
+### Project goals
+
+- Make it easy to load Parameter Store configuration into an application's environment before it starts.
+- Support multiple paths and recursive lookups so shared and application-specific settings can be used together.
+- Preserve values containing special characters when producing shell exports or dotenv content.
+
+### Inspiration
+
+- [aws-env] - the original tool for exporting AWS SSM parameters as environment variables
+- [ssmtui] - amazing terminal GUI for browsing AWS SSM Parameter Store
 
 # Features
 
-- ability to query multiple AWS SSM parameter store paths
-- recursive parameter fetching
-- ability to handle parameter store values containing special characters and shell escapes
-- support for all AWS SSM parameter types (including `SecureString`)
-- docker image for easy inclusion into your app's container image
-- parameter listing
+- Query multiple Parameter Store paths and override values with those from later paths.
+- Fetch parameters recursively.
+- Handle values containing special characters and shell escapes.
+- Support all AWS SSM parameter types, including `SecureString`.
+- Include the tool in your application's container image.
+- Perform batch operations on AWS SSM parameters:
+  - listing
+  - adding
+  - copying
+  - moving
+  - removing
 
-# Usage
+# Installation
 
-You can use this tool in many ways:
+### Prebuilt binary
 
-- as part of docker `ENTRYPOINT` script to populate environment variables before starting actual application
-```
-eval $(aws-ssm-params)
-```
-- to display AWS SSM parameters in a terse way
-```
-aws-ssm-params -r /dev/common /dev/my-app
-```
-- to import aws ssm parameter store parameters into current shell
-```
-eval $(aws-ssm-params -r /dev/common /dev/my-app)
-```
-- to generate [.env][dc-env] file for your [docker compose][dc] development setup.
-```
-aws-ssm-params -r /dev/common /dev/my-app -f dotenv > .env.local
+Prebuilt binaries for various operating systems and CPU architectures can be downloaded from
+[GitHub Releases][proj-releases].
+
+Download the binary for your platform, then install it in a directory on your `PATH` with `0755` permissions:
+
+```sh
+# user-home-bin install (preferred)
+install -m 755 /path/to/aws-ssm-params-linux-x86_64 ~/bin/aws-ssm-params
+
+# system wide install
+sudo install -m 755 /path/to/aws-ssm-params-linux-x86_64 /usr/local/bin/aws-ssm-params
+
+# check whether it's working
+aws-ssm-params --version
 ```
 
-## Docker
+### Container image
 
-This project also publishes container image `gracnar/aws-ssm-params` on [Docker Hub][proj-dockerhub]
+The project publishes the `gracnar/aws-ssm-params` image on [Docker Hub][proj-dockerhub]. You can run it
+directly or copy the binary into your own image:
 
 ```Dockerfile
-FROM gracnar/aws-ssm-params:<version> AS asp
+FROM gracnar/aws-ssm-params:<version|latest> AS asp
 
 FROM your-base-img
 
-# copy aws-ssm-params
+# copy aws-ssm-params from `asp`
 COPY    --from=asp     /usr/local/bin/aws-ssm-params /usr/local/bin
-# aws-ssm-params now it can be used as part of a entrypoint script
+
+# rest of your dockerfile goes here
+```
+
+To run the container directly:
+
+```
+docker run -it --rm  gracnar/aws-ssm-params --help
+```
+
+### Build from source
+
+To build the project yourself, follow the [local development instructions](#building).
+
+# Usage
+
+
+You can use the tool in several ways:
+
+- In a `ENTRYPOINT` script to set environment variables before starting your application:
+```
+eval $(aws-ssm-params /common,/my-app/common,/my-app/dev)
+```
+- To display all AWS SSM parameters with recursion:
+```
+aws-ssm-params -r /common,/my-app/common,/my-app/dev
+```
+- To load AWS SSM parameters into the current shell:
+```
+eval $(aws-ssm-params /common,/my-app/common,/my-app/dev)
+```
+- To generate a [.env file][dc-env] for your [Docker Compose][dc] development setup:
+```
+aws-ssm-params /common,/my-app/common,/my-app/dev -f dotenv > .env.local
+aws-ssm-params /common /my-app/common /my-app/dev -f dotenv > .env.local
+```
+
+### Suggested AWS SSM parameter structure
+
+<details>
+
+```
+# common parameters for all applications
+/common
+  |
+  +--> PARAM_A
+  +--> PARAM_B
+  |
+  | # settings root for application `my-app`
+  +--> /my-app
+  |       |
+  |       | # common `my-app` settings for all environments
+  |       +--> /my-app/common
+  |       |       |
+  |       |       +--> APP_FOO
+  |       |
+  |       | # `dev` environment settings for `my-app`
+  |       +---> /my-app/dev
+  |       |         |
+  |       |         +--> APP_BAR
+  |       |         +--> APP_BAZ
+  |       |
+  |       | # `staging` environment settings for `my-app`
+  |       +---> /my-app/dev
+  |       |         |
+  |       |         +--> APP_BAR
+  |       |         +--> APP_BAZ
+  |       |
+  |       | # `prod` environment settings for `my-app`
+  |       +---> /my-app/dev
+  |                |
+  |                +--> APP_FOO
+  |                +--> APP_BAR
+  |                +--> APP_BAZ
+  | # settings root for application `some-other-app`
+  +--> /some-other-app
+```
+
+</details>
+
+The structure above allows parameter inheritance and override in a scalable way; the correct command to utilize such
+parameter hierarchy for `my-app` is:
+
+```
+aws-ssm-params /common,/my-app/common,/my-app/dev
 ```
 
 ## CLI
 
-This tool picks up standard AWS SDK l and region configuration, such as `AWS_PROFILE` and `AWS_REGION`; you can
-also set `AWS_ENDPOINT` environment variable to point the tool to some unofficial AWS SSM endpoint
-(`http://localhost:4566/` for [localstack] SSM parameter store instance).
+The tool uses standard AWS SDK credentials and region settings, such as `AWS_PROFILE` and `AWS_REGION`.
+You can also set `AWS_ENDPOINT` to use a custom SSM endpoint, such as `http://localhost:4566/` for a
+[LocalStack][localstack] SSM instance.
 
 ### env (default sub-command)
 
-Fetches AWS SSM parameters from given paths and formats them in a way that is consumable by:
+Fetches AWS SSM parameters from the specified paths and formats them for:
 
-- shell (`-f exports`)
-- [docker compose envfile][dc-envfile] (`-f dotenv)
+- a shell (`-f exports`)
+- a [Docker Compose environment file][dc-envfile] (`-f dotenv`)
 
-**NOTE**: This is a default sub-command, it gets invoked also if the command `env` is not specified
+**Note:** `env` is the default subcommand, so you can omit it.
 
 ```
 Usage: aws-ssm-params env [-hlrRstuvV] [--full-version] [--endpoint=<endpoint>] [-f=<outputFormat>] [-L=<logLevel>]
                           [--region=<region>] [PATH...]
 Fetches and outputs AWS SSM parameters for shell evaluation [default command]
-      [PATH...]           One or more AWS SSM parameter store paths to fetch parameters from
+      [PATH...]           One or more AWS SSM parameter store paths to fetch parameters from; each path is also being
+                            split by the comma (',') character, so multiple paths can be specified with a single
+                            argument; changing order of paths affects the output.
                             Default: []
-
 OPTIONS:
       --endpoint=<endpoint>
                           AWS endpoint (optional, useful for testing)
@@ -137,9 +233,23 @@ EXAMPLES:
   SSM_PATHS="/dev/common,/dev/my-app" SSM_RECURSIVE=1 SSM_USE_LAST=1 aws-ssm-params
 ```
 
+Sample output for
+- **exports** format (`-f exports`)
+```
+export 'API_KEY=gamma-api_key'
+export 'DISPLAY_NAME=Alpha Display Name'
+export 'DUPLICATE=beta-duplicate'
+```
+- **dotenv** format (`-f dotenv`)
+```
+API_KEY="gamma-api_key"
+DISPLAY_NAME="Alpha Display Name"
+DUPLICATE="beta-duplicate"
+```
+
 ### ls
 
-Lists AWS SSM parameters at given paths; [glob(7)][glob] patterns are supported in last segment of the name.
+Lists AWS SSM parameters at the specified paths; [glob(7)][glob] patterns are supported in the last path segment.
 
 ```
 Usage: aws-ssm-params ls [-hrvV] [--full-version] [--local] [--endpoint=<endpoint>] [-L=<logLevel>] [--region=<region>]
@@ -284,11 +394,16 @@ OPTIONS:
 
 ## Local development
 
+The project is written in [Java][java] and compiled into a **native binary** with
+[GraalVM Native Image][graalvm-native-image]. A fully statically linked binary is currently available
+only for Linux x86_64.
+
 ### Building
 
 You need [GraalVM][graalvm] to compile this project into a native binary.
 
 ```sh
+# just build the binary
 ./gradlew nativeCompile
 ```
 
@@ -296,7 +411,7 @@ The executable is written to `build/native/nativeCompile/`.
 
 ### Tests
 
-The integration tests use a LocalStack container with only SSM enabled. Docker Compose
+The integration tests use a [LocalStack][localstack] container with only SSM enabled. Docker Compose
 runs the initialization script to create plaintext and encrypted parameters in three paths.
 
 ```sh
@@ -304,7 +419,12 @@ docker compose up -d --wait
 ./gradlew test
 ```
 
+[proj-dockerhub]: https://hub.docker.com/r/gracnar/aws-ssm-params
+[proj-releases]: https://github.com/bfg/aws-ssm-params/releases
+
+[java]: https://www.java.com/
 [graalvm]: https://www.graalvm.org/downloads/
+[graalvm-native-image]: https://www.graalvm.org/jdk25/reference-manual/native-image/
 [aws-ssm-param-store]: https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html
 [dc]: https://docs.docker.com/compose/
 [dc-env]: https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#use-the-env_file-attribute
@@ -313,4 +433,3 @@ docker compose up -d --wait
 [localstack]: https://github.com/localstack/localstack
 [aws-env]: https://github.com/droplr/aws-env
 [ssmtui]: https://github.com/suraj16thjan/ssmtui
-[proj-dockerhub]: https://hub.docker.com/r/gracnar/aws-ssm-params
