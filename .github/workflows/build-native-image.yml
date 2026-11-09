@@ -106,6 +106,8 @@ jobs:
         uses: graalvm/setup-graalvm@v1
         with:
           java-version:             25
+          # GraalVM version: https://www.graalvm.org/downloads/
+          version:                  25.5
           distribution:             graalvm-community
           check-for-updates:        false
           # NOTE: fully static linking requires musl libc, and this is supported only on linux/x86_64
