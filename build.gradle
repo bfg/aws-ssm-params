@@ -170,6 +170,10 @@ graalvmNative {
       // WARNING: Restricted methods will be blocked in a future release unless native access is enabled
       buildArgs.add('--enable-native-access=ALL-UNNAMED')
 
+      // java.lang.NullPointerException: Stack trace is imprecise, the top frames are missing and/or have wrong line
+      // numbers. Required for precise stack traces.
+      buildArgs.add('-H:-ReduceImplicitExceptionStackTraceInformation')
+
       // optimize for faster build time for dev builds and smaller binary for prod builds
       if (envBool('PROD_BINARY')) {
         buildArgs.add("-Os")
@@ -181,7 +185,8 @@ graalvmNative {
       buildArgs.add("--enable-url-protocols=http,https")
 
       if (!envBool('CI')) {
-        buildArgs.addAll('--emit', 'build-report')
+        // fails with graalvm >= 25.4
+        // buildArgs.addAll('--emit', 'build-report')
       }
 
       // linux specifics/optimizations
