@@ -11,6 +11,7 @@ import picocli.CommandLine.Unmatched;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Objects.requireNonNullElse;
@@ -31,7 +32,7 @@ public final class CmdRunner extends BaseCmd {
 
   // gets filled by unsupported cli args if call() from this class gets called
   @Unmatched
-  private List<String> unknownCliArgs;
+  List<String> unknownCliArgs = new ArrayList<>();
 
   public CmdRunner(InputStream stdin, PrintStream stdout, PrintStream stderr) {
     super(stdin, stdout, stderr);
