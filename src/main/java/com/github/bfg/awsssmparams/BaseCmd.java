@@ -3,6 +3,7 @@ package com.github.bfg.awsssmparams;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Visibility;
 import picocli.CommandLine.Option;
@@ -147,8 +148,19 @@ abstract class BaseCmd implements Callable<Integer> {
   }
 
   protected int die(String msg) {
-    stderr.println("FATAL: " + msg);
+    stderr.println(formatAnsi("@|red FATAL:|@ " + msg));
     return 1;
+  }
+
+  /**
+   * Formats message with ansii markups
+   *
+   * @param withMarkup text to mark up.
+   * @return formatted string with ansi color codes resolved whether output is connected to a tty suitable
+   * for {@link PrintStream#println(String)}
+   */
+  protected String formatAnsi(String withMarkup) {
+    return CommandLine.Help.Ansi.AUTO.text(withMarkup).toString();
   }
 
   private int displayFullVersion() {
